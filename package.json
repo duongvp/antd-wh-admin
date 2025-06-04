@@ -3,22 +3,35 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "cross-env NODE_OPTIONS=--trace-warnings next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.6.1",
+    "@ant-design/pro-components": "^2.8.7",
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
+    "antd": "^5.24.7",
+    "dayjs": "^1.11.13",
+    "jsonwebtoken": "^9.0.2",
+    "next": "15.2.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next": "15.2.5"
+    "react-to-print": "^3.1.0",
+    "swr": "^2.3.3",
+    "xlsx": "^0.18.5",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/lodash": "^4.17.16",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4"
+    "cross-env": "^7.0.3",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }

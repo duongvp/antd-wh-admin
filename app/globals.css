@@ -24,3 +24,74 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.ant-message {
+  bottom: 20px;
+  top: initial;
+}
+
+/* Trong file CSS global hoặc module */
+.custom-delete-btn {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.custom-delete-btn:hover,
+.custom-delete-btn:focus,
+.custom-delete-btn:active {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: #000 !important; /* Màu khi hover/focus */
+}
+
+.custom-delete-btn:hover .anticon,
+.custom-delete-btn:focus .anticon,
+.custom-delete-btn:active .anticon {
+  color: #000 !important;
+  font-weight: bold !important;
+}
+
+.custom-right-input input {
+  text-align: end !important;
+  padding-right: 0 !important;
+}
+
+.table-no-data .ant-table-tbody > tr.ant-table-placeholder {
+  display: none;
+}
+
+.table-no-data .ant-table-tbody {
+  visibility: hidden;
+}
+
+@media print {
+  body {
+    margin: 0;
+    padding: 20px;
+    font-size: 12px;
+  }
+
+  .ant-btn {
+    display: none !important;
+  }
+
+  .no-print {
+    display: none;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+}
+
+/* styles.css */
+.custom-datepicker input {
+  text-align: right; /* căn phải nội dung */
+  padding: 0; /* bỏ padding nếu cần */
+  width: 18ch; /* hoặc dùng auto nếu bạn muốn co theo nội dung */
+}
