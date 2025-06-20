@@ -47,52 +47,40 @@ const permissionsStructure = {
     },
     "Hàng hóa": {
         "Sản phẩm": {
-            actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá"],
-            keys: ["product_view", "product_create", "product_edit", "product_delete"]
-        },
-        "Danh mục sản phẩm": {
-            actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá"],
-            keys: ["category_view", "category_create", "category_edit", "category_delete"]
-        },
-        "Đơn vị tính": {
-            actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá"],
-            keys: ["unit_view", "unit_create", "unit_edit", "unit_delete"]
+            actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá", "Import excel", "Xuất excel"],
+            keys: ["product_view", "product_create", "product_edit", "product_delete", "product_import", "product_export"]
         },
         "Nhóm hàng": {
             actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá"],
-            keys: ["product_group_view", "product_group_create", "product_group_edit", "product_group_delete"]
+            keys: ["category_view", "category_create", "category_edit", "category_delete"]
         },
         "Kiểm kho": {
-            actions: ["Xem DS", "Điều chỉnh"],
-            keys: ["stock_check_view", "stock_check_create"]
+            actions: ["Xem DS", "Điều chỉnh", "Huỷ", "Cập nhật", "Xuất excel"],
+            keys: ["stock_check_view", "stock_check_create", "stock_check_edit", "stock_check_delete", "stock_check_export"]
         }
     },
     "Giao dịch": {
-        // "Đơn hàng": {
-        //     actions: ["Xem DS", "Tạo mới", "Cập nhật", "Xoá", "Hủy"],
-        //     keys: ["order_view", "order_create", "order_edit", "order_delete", "order_cancel"]
-        // },
         "Hóa đơn": {
-            actions: ["Xem DS", "Tạo mới", "Hủy"],
-            keys: ["invoice_view", "invoice_create", "invoice_void"]
+            actions: ["Xem DS", "Tạo mới", "Hủy", "Cập nhật", "Import excel", "Xuất excel", "In hóa đơn"],
+            keys: ["invoice_view", "invoice_create", "invoice_edit", "invoice_void", "invoice_import", "invoice_export", "invoice_print"]
         },
         "Trả hàng": {
-            actions: ["Xem DS", "Xử lý"],
-            keys: ["return_view", "return_process"]
+            actions: ["Xem DS", "Xử lý", "Hủy", "Cập nhật", "Xuất excel", "In trả hàng"],
+            keys: ["return_view", "return_process", "return_void", "return_edit", "return_export", "return_print"]
         },
         "Nhập hàng": {
-            actions: ["Xem DS", "Tạo mới", "Cập nhật"],
-            keys: ["import_view", "import_create", "import_edit"]
+            actions: ["Xem DS", "Tạo mới", "Hủy", "Cập nhật", "Import excel", "Xuất excel", "In phiếu nhập"],
+            keys: ["import_view", "import_create", "import_void", "import_edit", "import_import", "import_export", "import_print"]
         }
     },
     "Đối tác": {
         "Khách hàng": {
-            actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá"],
-            keys: ["customer_view", "customer_create", "customer_edit", "customer_delete"]
+            actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá", "Import excel", "Xuất excel"],
+            keys: ["customer_view", "customer_create", "customer_edit", "customer_delete", "customer_import", "customer_export"]
         },
         "Nhà cung cấp": {
-            actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá"],
-            keys: ["supplier_view", "supplier_create", "supplier_edit", "supplier_delete"]
+            actions: ["Xem DS", "Thêm mới", "Cập nhật", "Xoá", "Import excel", "Xuất excel"],
+            keys: ["supplier_view", "supplier_create", "supplier_edit", "supplier_delete", "supplier_import", "supplier_export"]
         }
     }
 };

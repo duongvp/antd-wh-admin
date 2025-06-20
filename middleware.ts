@@ -1,26 +1,32 @@
 // middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { PermissionKey } from './types/permissions';
 
 const protectedRoutes = [
     // { path: '/dashboard', permission: 'dashboard_view' },
-    { path: '/products', permission: 'product_view' },
-    { path: '/units', permission: 'unit_view' },
-    { path: '/categories', permission: 'category_view' },
-    { path: '/transactions/inventory-checks', permission: 'stock_check_view' },
-    { path: '/transactions/invoices', permission: 'invoice_view' },
-    { path: '/transactions/purchase-orders', permission: 'import_view' },
-    { path: '/transactions/returns', permission: 'return_view' },
-    { path: '/partners/customers', permission: 'customer_view' },
-    { path: '/partners/suppliers', permission: 'supplier_view' },
-    { path: '/branches', permission: 'branch_view' },
-    { path: '/users', permission: 'user_view' },
-    { path: '/member-roles', permission: 'user_view' },
+    { path: '/products', permission: PermissionKey.PRODUCT_VIEW },
+    // { path: '/units', permission: PermissionKey.UNIT_VIEW },
+    { path: '/categories', permission: PermissionKey.CATEGORY_VIEW },
+    { path: '/transactions/inventory-checks', permission: PermissionKey.STOCK_CHECK_VIEW },
+    { path: '/transactions/invoices', permission: PermissionKey.INVOICE_VIEW },
+    { path: '/transactions/purchase-orders', permission: PermissionKey.IMPORT_VIEW },
+    { path: '/transactions/returns', permission: PermissionKey.RETURN_VIEW },
+    { path: '/partners/customers', permission: PermissionKey.CUSTOMER_VIEW },
+    { path: '/partners/suppliers', permission: PermissionKey.SUPPLIER_VIEW },
+    { path: '/branches', permission: PermissionKey.BRANCH_VIEW },
+    { path: '/users', permission: PermissionKey.USER_VIEW },
+    { path: '/member-roles', permission: PermissionKey.USER_VIEW },
 ];
 
 export function middleware(req: NextRequest) {
+    console.log('Request URL:', req.url);
+    console.log('All headers:', Object.fromEntries(req.headers.entries()));
+    console.log('All cookies:', req.cookies.getAll());
+
     const token = req.cookies.get('refreshToken')?.value;
     const userCookie = req.cookies.get('user')?.value;
+    console.log("🚀 ~ middleware ~ userCookie lại11:", userCookie, token)
 
     if (!token || !userCookie) {
         return NextResponse.redirect(new URL('/auth/login', req.url));

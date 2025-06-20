@@ -83,7 +83,7 @@ export const importPurchaseOrdersFromExcel = async (formatData: any): Promise<an
     });
 };
 
-export const exportPurchaseOrders = async (purchaseOrderIds: Array<string | number>, warehouseId?: number): Promise<Blob> => {
+export const exportPurchaseOrders = async (purchaseOrderIds: Array<string | number | undefined>, warehouseId?: number): Promise<Blob> => {
     const response = await fetch(`${API_BASE_URL}/export`, {
         method: 'POST',
         headers: {
@@ -144,10 +144,9 @@ export const updatePurchaseOrder = async (id: number, purchaseOrderData: any) =>
         },
     });
 };
-
-export const deletePurchaseOrder = async (id: string) => {
-    const url = `${API_BASE_URL}/${id}`;
+export const cancelPurchaseOrder = async (id: number) => {
+    const url = `${API_BASE_URL}/cancel/${id}`;
     return await fetchInstance(url, {
-        method: 'DELETE',
+        method: 'POST',
     });
 };

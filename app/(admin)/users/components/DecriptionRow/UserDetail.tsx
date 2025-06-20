@@ -6,6 +6,8 @@ import { deleteUser, toggleUserStatus, UserApiResponse } from '@/services/userSe
 import useUserStore from '@/stores/userStore';
 import { ActionType } from '@/enums/action';
 import BtnDeActiveDetete from '@/components/shared/BtnDeActiveDetete';
+import { useAuthStore } from '@/stores/authStore';
+import { PermissionKey } from '@/types/permissions';
 
 const { Text } = Typography;
 
@@ -15,6 +17,7 @@ interface UserDetailProps {
 
 const UserDetail: React.FC<UserDetailProps> = ({ record }) => {
     const { setModal, setShouldReload } = useUserStore();
+    const hasPermission = useAuthStore(state => state.hasPermission);
 
     const handleUpdate = () => {
         setModal({
@@ -53,22 +56,30 @@ const UserDetail: React.FC<UserDetailProps> = ({ record }) => {
             <Row justify="end" align="middle" style={{ marginTop: 16 }}>
                 <Col>
                     <Space>
-                        <Button
-                            type="primary"
-                            icon={<UploadOutlined />}
-                            onClick={handleUpdate}
-                        >
-                            Cập nhật
-                        </Button>
-                        <BtnDeActiveDetete
-                            record={{ id: record.user_id, ...record }}
-                            contextActive='Ban có chắc muốn hoạt động lại người dùng này không?'
-                            contextDeactive='Bạn có chắc chắn muốn ngừng hoạt động người dùng này?'
-                            contextDelete='Bạn có chắc chắn muốn xoá người dùng này? Hành động này sẽ không thể hoàn tác.'
-                            toggleStatus={toggleUserStatus}
-                            onDelete={deleteUser}
-                            setShouldReload={setShouldReload}
-                        />
+                        {
+                            hasPermission(PermissionKey.USER_EDIT) && (
+                                <Button
+                                    type="primary"
+                                    icon={<UploadOutlined />}
+                                    onClick={handleUpdate}
+                                >
+                                    Cập nhật
+                                </Button>
+                            )
+                        }
+                        {
+                            hasPermission(PermissionKey.USER_DELETE) && (
+                                <BtnDeActiveDetete
+                                    record={{ id: record.user_id, ...record }}
+                                    contextActive='Ban có chắc muốn hoạt động lại người dùng này không?'
+                                    contextDeactive='Bạn có chắc chắn muốn ngừng hoạt động người dùng này?'
+                                    contextDelete='Bạn có chắc chắn muốn xoá người dùng này? Hành động này sẽ không thể hoàn tác.'
+                                    toggleStatus={toggleUserStatus}
+                                    onDelete={deleteUser}
+                                    setShouldReload={setShouldReload}
+                                />
+                            )
+                        }
                     </Space>
                 </Col>
             </Row>

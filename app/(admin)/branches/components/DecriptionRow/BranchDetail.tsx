@@ -6,13 +6,15 @@ import { ActionType } from '@/enums/action';
 import { deleteWarehouse, getWarehouseById, toggleWarehouseStatus, WarehouseApiResponse } from '@/services/branchService';
 import useBranchStore from '@/stores/branchStore';
 import BtnDeActiveDetete from '@/components/shared/BtnDeActiveDetete';
+import { useAuthStore } from '@/stores/authStore';
+import { PermissionKey } from '@/types/permissions';
 
 const { Text } = Typography;
 
 
 const BranchDetail: React.FC<{ record: WarehouseApiResponse; }> = ({ record }) => {
     const { setModal, setShouldReload } = useBranchStore();
-
+    const hasPermission = useAuthStore(state => state.hasPermission);
     const handleUpdate = async () => {
         const res = await getWarehouseById(record.warehouse_id);
         setModal({
@@ -52,23 +54,30 @@ const BranchDetail: React.FC<{ record: WarehouseApiResponse; }> = ({ record }) =
             <Row justify="end" align="middle" style={{ marginTop: 16 }}>
                 <Col>
                     <Space>
-                        <Button
-                            type="primary"
-                            icon={<UploadOutlined />}
-                            onClick={handleUpdate}
-                        >
-                            Cập nhật
-                        </Button>
-
-                        <BtnDeActiveDetete
-                            record={{ id: record.warehouse_id, ...record }}
-                            contextActive='Ban có chắc muốn hoạt động lại chi nhánh này không?'
-                            contextDeactive='Bạn có chắc chắn muốn ngừng hoạt động chi nhánh này?'
-                            contextDelete='Bạn có chắc chắn muốn xoá chi nhánh này? Hành động này sẽ không thể hoàn tác.'
-                            toggleStatus={toggleWarehouseStatus}
-                            onDelete={deleteWarehouse}
-                            setShouldReload={setShouldReload}
-                        />
+                        {
+                            hasPermission(PermissionKey.BRANCH_EDIT) && (
+                                <Button
+                                    type="primary"
+                                    icon={<UploadOutlined />}
+                                    onClick={handleUpdate}
+                                >
+                                    Cập nhật
+                                </Button>
+                            )
+                        }
+                        {
+                            hasPermission(PermissionKey.BRANCH_DELETE) && (
+                                <BtnDeActiveDetete
+                                    record={{ id: record.warehouse_id, ...record }}
+                                    contextActive='Ban có chắc muốn hoạt động lại chi nhánh này không?'
+                                    contextDeactive='Bạn có chắc chắn muốn ngừng hoạt động chi nhánh này?'
+                                    contextDelete='Bạn có chắc chắn muốn xoá chi nhánh này? Hành động này sẽ không thể hoàn tác.'
+                                    toggleStatus={toggleWarehouseStatus}
+                                    onDelete={deleteWarehouse}
+                                    setShouldReload={setShouldReload}
+                                />
+                            )
+                        }
                     </Space>
                 </Col>
             </Row>

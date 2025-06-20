@@ -10,6 +10,8 @@ import DecriptionRow from "./components/DecriptionRow";
 import BranchModal from "./components/BranchModal";
 import useBranchStore from "@/stores/branchStore";
 import { convertStatusToText } from "@/ultils/customText";
+import { useAuthStore } from "@/stores/authStore";
+import { PermissionKey } from "@/types/permissions";
 
 
 // Đây là kiểu dữ liệu cho Table (thêm key + description)
@@ -48,7 +50,7 @@ const Page = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
     const { modal, setModal, shouldReload, setShouldReload } = useBranchStore();
-
+    const hasPermission = useAuthStore(state => state.hasPermission);
 
     const fetchWarehouses = async () => {
         try {
@@ -78,6 +80,10 @@ const Page = () => {
         );
     };
 
+    const handleAddBtn = () => {
+        setModal({ open: true, type: ActionType.CREATE, warehouse: null });
+    };
+
     useEffect(() => {
         fetchWarehouses();
     }, []);
@@ -95,7 +101,7 @@ const Page = () => {
                 showSearch={false}
                 titleBtnAdd="Chi nhánh"
                 onSearch={async (value) => console.log(value)}
-                handleAddBtn={() => setModal({ open: true, type: ActionType.CREATE, warehouse: null })}
+                handleAddBtn={hasPermission(PermissionKey.BRANCH_CREATE) ? handleAddBtn : undefined}
             />
             {/* <SearchAndActionsBar /> */}
             <CustomTable<DataType>

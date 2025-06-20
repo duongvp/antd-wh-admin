@@ -1,49 +1,38 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Card, Row, Col } from 'antd';
-import ProductGridTemplate from '@/components/templates/ProductGridTemplate';
-import ImportOrdersForm from './ImportOrdersForm';
-import { useInvoiceTableData } from '@/hooks/useInvoiceTableData';
+import BillTabs from '@/components/shared/BillTabs';
+import React, { useEffect } from 'react';
+import ImportOrders from './ImportOrders';
 import { ITypeImportInvoice } from '@/types/invoice';
-import { InvoiceStatus } from '@/enums/invoice';
 
-const ImportOrders: React.FC<{ slug?: number, type?: ITypeImportInvoice }> = ({ slug, type }) => {
-    const [totalAmount, setTotalAmount] = useState<number>(0);
-    const [selectedProducts, setSelectedProducts] = useState<any>([]);
-    const {
-        tableData,
-        invoiceDetails,
-        invoiceSummary,
-    } = useInvoiceTableData(slug ?? 0);
+const Index: React.FC<{ slug?: number, type: ITypeImportInvoice, code?: string }> = ({ slug, type, code = "" }) => {
+    const [initialTabs, setInitialTabs] = React.useState([{
+        title: "Hoá đơn 1",
+        key: "1",
+        component: <ImportOrders type="create" />,
+    }]);
 
-    useMemo(() => {
-        if (type == 'copy ') {
-            invoiceDetails.status = InvoiceStatus.DRAFT
+    useEffect(() => {
+        console.log("type", type);
+        if (type == 'copy') {
+            setInitialTabs([...initialTabs, {
+                title: `Sao chéo_${code}`,
+                key: "2",
+                component: <ImportOrders slug={slug} type={type} />,
+            }]);
+        } else if (type == 'edit') {
+            setInitialTabs([...initialTabs, {
+                title: `Cập nhật_${code}`,
+                key: "2",
+                component: <ImportOrders slug={slug} type={type} />,
+            }]);
         }
-    }, [type, invoiceDetails])
+    }, [type, slug]);
 
     return (
-        <Row gutter={16} style={{ height: "100%" }}>
-            {/* Left side */}
-            <Col span={16}>
-                <ProductGridTemplate disableAction={invoiceDetails?.status === InvoiceStatus.RECEIVED} setTotalAmount={setTotalAmount} tableData={tableData} setData={setSelectedProducts} />
-            </Col>
-
-            {/* Right side */}
-            <Col span={8}>
-                <Card
-                    title="Thông tin hoá đơn"
-                    style={{ height: "100%", display: "flex", flexDirection: "column", boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}
-                    styles={{
-                        body: {
-                            flex: 1,
-                        },
-                    }}
-                >
-                    <ImportOrdersForm subtotal={totalAmount} type={type} invoiceDetails={invoiceDetails} invoiceSummary={invoiceSummary} selectedProducts={selectedProducts} />
-                </Card>
-            </Col>
-        </Row>
+        <BillTabs
+            initialTabs={initialTabs}
+            defaultComponent={() => <ImportOrders type="create" />}
+        />
     );
 };
 
-export default ImportOrders;
+export default Index;

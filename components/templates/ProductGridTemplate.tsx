@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { Button, Empty, Flex, InputNumber, Upload } from 'antd';
+import { Button, Empty, Flex, Upload } from 'antd';
 import { UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import SelectWithButton from '../ui/Selects/SelectWithButton';
 import CustomTable from '../ui/Table';
@@ -13,33 +13,18 @@ import CustomInput from '../ui/Inputs';
 import Link from 'next/link';
 import useProductStore from '@/stores/productStore';
 import { ActionType } from '@/enums/action';
-
-interface ImportGoodsItem {
-    no: number;
-    itemCode: string;
-    id: number;
-    itemName: string;
-    unit: string;
-    quantity: number;
-    unitPrice: number;
-    discount: number;
-    totalPrice: number;
-}
-
-interface DataType extends ImportGoodsItem {
-    key: string;
-}
+import { IDataTypeProductSelect } from '@/types/productSelect';
 
 interface ProductSelectProps {
     setTotalAmount: React.Dispatch<React.SetStateAction<number>>;
-    setData?: React.Dispatch<any>;
-    tableData?: any
-    isViewPurchasePrice?: boolean
-    disableAction?: boolean
+    tableData?: any,
+    dataSource: IDataTypeProductSelect[];
+    setDataSource: React.Dispatch<React.SetStateAction<IDataTypeProductSelect[]>>;
+    isViewPurchasePrice?: boolean,
+    isViewMaxQuantity?: boolean
 }
 
-const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice = false, disableAction = false }: ProductSelectProps) => {
-    console.log("🚀 ~ ProductSelect ~ tableData:", tableData)
+const ProductSelect = ({ setTotalAmount, tableData, dataSource, setDataSource, isViewPurchasePrice = false, isViewMaxQuantity = false }: ProductSelectProps) => {
     const [searchTerm, setSearchTerm] = useState('');
     const { setModal } = useProductStore();
 
@@ -48,11 +33,7 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
         handleScroll
     } = useProductSelect(searchTerm, isViewPurchasePrice);
 
-    console.log('options', options);
-
-    const [dataSource, setDataSource] = useState<DataType[]>([]);
-
-    const columns: ColumnsType<DataType> = [
+    const columns: ColumnsType<IDataTypeProductSelect> = [
         {
             title: "",
             key: "action",
@@ -66,7 +47,6 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
                         backgroundColor: "transparent",
                     }}
                     onClick={() => handleDelete(record.key)}
-                    disabled={disableAction}
                 />
             ),
         },
@@ -79,19 +59,28 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
             dataIndex: 'quantity',
             key: 'quantity',
             width: 100,
-            render: (value, record) => (
-                <CustomInput
-                    isNumber
-                    value={value}
-                    onChange={(e) => handleChangeValue(record.key, 'unitPrice', Number(e.target.value))}
-                    inputNumberProps={{
-                        min: 1,
-                        value: value,
-                        onChange: (val) => handleChangeValue(record.key, 'quantity', Number(val) || 1),
-                        disabled: disableAction
-                    }}
-                />
-            ),
+            render: (value, record) => {
+                return (
+                    <Flex vertical align='end' style={{ position: 'relative' }}>
+                        <CustomInput
+                            isNumber
+                            value={value}
+                            onChange={(e) => handleChangeValue(record.key, 'unitPrice', Number(e.target.value))}
+                            inputNumberProps={{
+                                min: 1,
+                                value: value,
+                                onChange: (val) => handleChangeValue(record.key, 'quantity', Number(val) || 1),
+                                ...(isViewMaxQuantity && { max: record.maxQuantity }),
+                            }}
+                        />
+                        {
+                            isViewMaxQuantity && (
+                                <span style={{ position: 'absolute', bottom: "-18px", fontSize: 12 }}>{`/ ${record.maxQuantity}`}</span >
+                            )
+                        }
+                    </Flex>
+                )
+            },
         },
         {
             title: 'Đơn giá',
@@ -107,8 +96,8 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
                         formatter: (val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ','),
                         parser: (val) => val?.replace(/,/g, '') || '0',
                         onChange: (val) => handleChangeValue(record.key, 'unitPrice', Number(val) || 0),
-                        disabled: disableAction
                     }}
+
                 />
             ),
         },
@@ -127,7 +116,6 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
                         formatter: (val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ','),
                         parser: (val) => val?.replace(/,/g, '') || '0',
                         onChange: (val) => handleChangeValue(record.key, 'discount', Number(val) || 0),
-                        disabled: disableAction
                     }}
                 />
             ),
@@ -135,32 +123,33 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
         { title: 'Thành tiền', dataIndex: 'totalPrice', key: 'totalPrice', render: (value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',') },
     ];
 
-    const handleChangeValue = (
-        key: string,
-        field: 'quantity' | 'unitPrice' | 'discount',
-        value: number | string
-    ) => {
-        console.log("value: ", value);
-        setDataSource((prevData) =>
-            prevData.map((item) => {
-                if (item.key === key) {
-                    const newItem = { ...item, [field]: value };
+    const
+        handleChangeValue = (
 
-                    const donGiaNumber = Number(newItem.unitPrice);
-                    const soLuongNumber = Number(newItem.quantity);
-                    const giamGiaNumber = Number(newItem.discount);
+            key: string,
+            field: 'quantity' | 'unitPrice' | 'discount',
+            value: number | string
+        ) => {
+            setDataSource((prevData) =>
+                prevData.map((item) => {
+                    if (item.key === key) {
+                        const newItem = { ...item, [field]: value };
 
-                    const total = (donGiaNumber * soLuongNumber) - giamGiaNumber;
+                        const donGiaNumber = Number(newItem.unitPrice);
+                        const soLuongNumber = Number(newItem.quantity);
+                        const giamGiaNumber = Number(newItem.discount);
 
-                    return {
-                        ...newItem,
-                        totalPrice: total,
-                    };
-                }
-                return item;
-            })
-        );
-    };
+                        const total = (donGiaNumber * soLuongNumber) - giamGiaNumber;
+
+                        return {
+                            ...newItem,
+                            totalPrice: total,
+                        };
+                    }
+                    return item;
+                })
+            );
+        };
 
     const handleDelete = (key: string) => {
         setDataSource((prevData) => {
@@ -233,8 +222,6 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
         }, 0);
 
         setTotalAmount(total);
-        if (setData)
-            setData(dataSource);
     }, [dataSource]);
 
     useEffect(() => {
@@ -246,7 +233,7 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
                 return {
                     id: item.product_id,
                     key: item.product_code,
-                    no: index,
+                    no: index + 1,
                     itemCode: item.product_code,
                     itemName: item.product_name,
                     unit: item.unit_name,
@@ -254,6 +241,7 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
                     unitPrice: unitPrice,
                     discount: item.discount,
                     totalPrice: totalPrice,
+                    maxQuantity: item.quantity,
                 };
             });
 
@@ -261,12 +249,12 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
         }
     }, [tableData])
 
+
     return (
         <div style={{ height: "100%" }}>
             <Flex vertical style={{ height: "100%" }}>
                 <div style={{ marginBottom: 16, width: '40%' }}>
                     <SelectWithButton
-                        disabled={disableAction}
                         options={options}
                         style={{ width: '100%' }}
                         placeholder="---Tìm hàng hoá theo mã hoặc tên---"
@@ -283,7 +271,7 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
                     />
                 </div>
                 <div style={{ flex: 1, position: "relative" }} className={!dataSource.length ? "table-no-data" : ""}>
-                    <CustomTable<DataType>
+                    <CustomTable<IDataTypeProductSelect>
                         style={{ height: "100%", borderRadius: 8, boxShadow: "0 0 10px rgba(0,0,0,0.1)" }}
                         columns={columns}
                         dataSource={dataSource}
@@ -293,6 +281,7 @@ const ProductSelect = ({ setTotalAmount, tableData, setData, isViewPurchasePrice
                         locale={{
                             emptyText: null
                         }}
+                        size='large'
                     />
                     {!dataSource.length && (
                         <div style={{ textAlign: 'center', position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>

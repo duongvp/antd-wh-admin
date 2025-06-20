@@ -5,15 +5,21 @@ import type { ColumnsType } from "antd/es/table";
 // import SearchAndActionsBar from "./components/SearchAndActionsBar";
 import DecriptionRow from "./components/DecriptionRow";
 import useCustomerStore from "@/stores/customerStore";
-import { CustomerApiResponse, getCustomersByPage } from "@/services/customerService";
+import { CustomerApiResponse, exportCustomers, getCustomersByPage, importCustomersFromExcel } from "@/services/customerService";
 import SearchAndActionsBar from "@/components/shared/SearchAndActionBar";
 import CustomerModal from "./components/Modal/CustomerModal";
 import { ActionType } from "@/enums/action";
+import ImportModal from "@/components/shared/ImportModal";
+import GenericExportButton from "@/components/shared/GenericExportButton";
+import { exportInventoryChecks } from "@/services/inventoryCheckService";
+import { useAuthStore } from "@/stores/authStore";
+import { PermissionKey } from "@/types/permissions";
 
 interface Pagination {
     current?: number;
     pageSize?: number;
 }
+
 
 // Đây là kiểu dữ liệu cho Table (thêm key + description)
 interface DataType extends CustomerApiResponse {
@@ -56,7 +62,9 @@ const Page = () => {
     const [total, setTotal] = useState<number>(0);
     const [filters, setFilters] = useState<any>({});
     const { setModal } = useCustomerStore()
-
+    const [openImportModal, setOpenImportModal] = useState(false);
+    const { shouldReload, setShouldReload } = useCustomerStore();
+    const { hasPermission } = useAuthStore();
 
     const fetchData = async (params: Pagination = {}) => {
         setLoading(true);
@@ -106,13 +114,38 @@ const Page = () => {
         fetchData();
     }, [filters.search])
 
+    useEffect(() => {
+        if (shouldReload) {
+            fetchData();
+            setShouldReload(false);
+        }
+    }, [shouldReload])
+
+
+    const handleAddBtn = () => {
+        setModal({ open: true, type: ActionType.CREATE, customer: null })
+    }
+
+    const handleImportClick = () => {
+        setOpenImportModal(true);
+    }
+
     return (
         <>
             <SearchAndActionsBar
                 onSearch={handleSearch}
                 placeholder="Theo tên, số điện thoại khách hàng"
                 titleBtnAdd="Khách hàng"
-                handleAddBtn={() => { setModal({ open: true, type: ActionType.CREATE, customer: null }) }}
+                handleAddBtn={hasPermission(PermissionKey.CUSTOMER_CREATE) ? handleAddBtn : undefined}
+                handleImportClick={hasPermission(PermissionKey.CUSTOMER_IMPORT) ? handleImportClick : undefined}
+                extraExportButton={
+                    hasPermission(PermissionKey.CUSTOMER_EXPORT) && (
+                        <GenericExportButton
+                            exportService={exportCustomers}
+                            fileNamePrefix="Danh_sach_khach_hang"
+                        />
+                    )
+                }
             />
             <CustomTable<DataType>
                 columns={columns}
@@ -136,6 +169,19 @@ const Page = () => {
                 onChange={handleTableChange}
             />
             <CustomerModal />
+            <ImportModal
+                open={openImportModal}
+                title="Tạo khách hàng từ file dữ liệu"
+                onClose={() => setOpenImportModal(false)}
+                notes={[
+                    'Mã khách hàng luôn bắt đầu bằng cụm từ “KHIP”. Nếu bạn không nhập, hệ thống sẽ tự động thêm vào.',
+                    'Hệ thống cho phép import tối đa 500 dòng mỗi lần.',
+                    'Hệ thống sẽ kiểm tra nếu khách hàng chưa có sẽ được tạo mới khách hàng',
+                ]}
+                importApiFn={importCustomersFromExcel}
+                linkExcel="/files/danh_sach_khach_hang_mau.xlsx"
+                setShouldReload={setShouldReload}
+            />
         </>
     );
 };

@@ -7,23 +7,20 @@ import SearchAndActionsBar from "@/components/shared/SearchAndActionBar";
 import { exportPurchaseOrders, getPurchaseOrdersByPage, importPurchaseOrdersFromExcel, PurchaseOrderApiResponse } from "@/services/purchaseOrderService";
 import { notification } from "antd";
 import FilterDrawer from "@/components/shared/FilterModal";
-import { isEmpty, set } from "lodash";
+import { isEmpty } from "lodash";
 import DecriptionTable from "./components/DecriptionRow";
 import ImportModal from "@/components/shared/ImportModal";
 import GenericExportButton from "@/components/shared/GenericExportButton";
 import { useAuthStore } from "@/stores/authStore";
 import usePurchaseOrderStore from "@/stores/purchaseOrderStore";
 import { PurchaseOrderStatus } from "@/enums/status";
+import { useRouter } from "next/navigation";
+import { PermissionKey } from "@/types/permissions";
 
 interface DataType extends PurchaseOrderApiResponse {
     key: number;
     description?: React.ReactNode;
 }
-
-const formatCurrency = (value: number | string) => {
-    return Number(value).toLocaleString();
-};
-
 
 const columns: ColumnsType<DataType> = [
     {
@@ -38,11 +35,6 @@ const columns: ColumnsType<DataType> = [
     {
         title: "Nhà cung cấp",
         dataIndex: "supplier_name",
-    },
-    {
-        title: "Cần trả NCC",
-        dataIndex: "debt_amount",
-        render: (value) => Number(value).toLocaleString(), // Format with commas
     },
     {
         title: "Trạng thái",
@@ -60,10 +52,11 @@ const Page = () => {
     const [total, setTotal] = useState<number>(0);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
     const [openImportModal, setOpenImportModal] = useState(false);
-
+    const hasPermission = useAuthStore(state => state.hasPermission);
     const { warehouseId } = useAuthStore((state) => state.user)
-    const [filter, setFilter] = useState<Record<string, any>>({ warehouse_id: warehouseId });
+    const [filter, setFilter] = useState<Record<string, any>>({ warehouse_id: warehouseId, status: PurchaseOrderStatus.RECEIVED });
     const { setShouldReload, shouldReload } = usePurchaseOrderStore()
+    const router = useRouter();
 
     const fetchData = useCallback(async () => {
         if (warehouseId === -1) return
@@ -117,7 +110,15 @@ const Page = () => {
             setFilter({ po_code: filter.po_code });
             return;
         }
-        setFilter({ ...filter, ...values });
+        setFilter({ po_code: filter.po_code, ...values });
+    };
+
+    const handleAddBtn = () => {
+        router.push("/transactions/purchase-orders/create");
+    };
+
+    const handleImportClick = () => {
+        setOpenImportModal(true);
     };
 
     useEffect(() => {
@@ -143,15 +144,17 @@ const Page = () => {
                 onSearch={handleSearch}
                 placeholder="Tìm theo mã phiếu nhập"
                 titleBtnAdd="Phiếu nhập"
-                handleAddBtn={() => window.open('/transactions/purchase-orders/create', '_blank')}
+                handleAddBtn={hasPermission(PermissionKey.IMPORT_CREATE) ? handleAddBtn : undefined}
+                handleImportClick={hasPermission(PermissionKey.IMPORT_IMPORT) ? handleImportClick : undefined}
                 handleFilterBtn={() => setOpenFilterDrawer(true)}
-                handleImportClick={() => setOpenImportModal(true)}
                 extraExportButton={
-                    <GenericExportButton
-                        exportService={exportPurchaseOrders}
-                        serviceParams={[[], 1]}
-                        fileNamePrefix="Danh_sach_phieu_nhap_hang"
-                    />
+                    hasPermission(PermissionKey.IMPORT_EXPORT) && (
+                        <GenericExportButton
+                            exportService={exportPurchaseOrders}
+                            serviceParams={[[], warehouseId]}
+                            fileNamePrefix="Danh_sach_phieu_nhap_hang"
+                        />
+                    )
                 }
             />
 
@@ -191,6 +194,8 @@ const Page = () => {
                 open={openFilterDrawer}
                 onClose={() => setOpenFilterDrawer(false)}
                 handleSearch={handleFilterOrder}
+                title="Bộ lọc phiếu nhập hàng"
+                isPurchaseOrder={true}
             />
 
             <ImportModal
@@ -199,11 +204,12 @@ const Page = () => {
                 title="Nhập hàng hóa từ file dữ liệu"
                 notes={[
                     'Mã hóa đơn luôn bắt đầu bằng cụm từ “NHIP”. Nếu bạn không nhập, hệ thống sẽ tự động thêm vào.',
-                    'Hệ thống cho phép import tối đa 1.000 dòng mỗi lần.',
+                    'Hệ thống cho phép import tối đa 500 dòng mỗi lần.',
                     'Đảm bảo mã phiếu nhập không trùng với mã phiếu nhập được import trước đó. Hoặc không cần nhập mã phiếu hệ thống sẽ tự cung cấp',
                 ]}
                 importApiFn={importPurchaseOrdersFromExcel}
                 linkExcel="/files/danh_sach_phieu_nhap_hang_mau.xlsx"
+                setShouldReload={setShouldReload}
             />
         </>
     );

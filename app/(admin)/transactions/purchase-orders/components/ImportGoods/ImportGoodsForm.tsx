@@ -1,20 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Form, Typography, Button, Divider, Flex, Input } from 'antd';
-import { CheckOutlined, SaveOutlined } from '@ant-design/icons';
+import { Form, Typography, Button, Divider, Flex, Input, Empty } from 'antd';
+import { CheckOutlined } from '@ant-design/icons';
 import CustomInput from '@/components/ui/Inputs'; // bạn nhớ tạo cho chuẩn nhé
 import SelectWithButton from '@/components/ui/Selects/SelectWithButton';
 import SupplierModal from '@/app/(admin)/partners/suppliers/components/Modal/SupplierModal';
 import useSupplierStore from '@/stores/supplierStore';
-import { useSupplierSelect } from '@/hooks/useSupplierSelect';
 import HeaderForm from '@/components/shared/HeaderForm';
 import { createPurchaseOrder, IPurchaseOrderBase, IPurchaseOrderSummary, updatePurchaseOrder } from '@/services/purchaseOrderService';
-import { create, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { ActionType } from '@/enums/action';
 import { showErrorMessage, showSuccessMessage } from '@/ultils/message';
 import { PurchaseOrderStatus } from '@/enums/status';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/authStore';
 import { ITypeImportInvoice } from '@/types/invoice';
+import { IDataTypeProductSelect } from '@/types/productSelect';
+import { useRouter } from 'next/navigation';
+import useSupplierSelect from '@/hooks/useSupplierSelect';
+import useProductStore from '@/stores/productStore';
+import { PermissionKey } from '@/types/permissions';
 
 const { Text } = Typography;
 
@@ -23,23 +27,32 @@ interface ImportGoodsFormProps {
     poInfos: Partial<IPurchaseOrderBase>;
     poSummary?: Partial<IPurchaseOrderSummary>;
     type?: ITypeImportInvoice;
-    selectedProducts?: any;
+    dataSource: IDataTypeProductSelect[]
+    setDataSource: React.Dispatch<React.SetStateAction<IDataTypeProductSelect[]>>;
 
 }
 
-export default function ImportGoodsForm({ subtotal, poInfos, poSummary, type, selectedProducts }: ImportGoodsFormProps) {
+export default function ImportGoodsForm({ subtotal, poInfos, poSummary, type, dataSource, setDataSource }: ImportGoodsFormProps) {
     const [form] = Form.useForm();
     const [discountAmount, setDiscountAmount] = useState<number>(0);
     const [paymentToSupplier, setPaymentToSupplier] = useState<number>(0);
     const [debt, setDebt] = useState<number>(0);
     const { setModal } = useSupplierStore();
-    const { options } = useSupplierSelect()
-    const [loadingSave, setLoadingSave] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const { options, handleScroll } = useSupplierSelect(searchTerm, form)
     const [loadingSubmit, setLoadingSubmit] = useState(false);
     const { warehouseId, userId } = useAuthStore(state => state.user);
     const [userIdSelected, setUserIdSelected] = useState<number>(userId);
     const [dateTimeSelected, setDateTimeSelected] = useState<dayjs.Dayjs | null | undefined>(dayjs());
+    const { setShouldReload } = useProductStore();
+    const { hasPermission } = useAuthStore();
 
+    const router = useRouter()
+
+    const resetForm = () => {
+        form.resetFields();
+        setDataSource([]);
+    }
 
     const calculateTotal = () => {
         const total = subtotal - discountAmount;
@@ -51,28 +64,18 @@ export default function ImportGoodsForm({ subtotal, poInfos, poSummary, type, se
         setDebt(total);
     };
 
-    const handleSave = async () => {
-        try {
-            setLoadingSave(true);
-            const values = form.getFieldsValue();
-            await handleCreatePurchaseOrder(values, PurchaseOrderStatus.DRAFT);
-        } finally {
-            setLoadingSave(false);
-        }
-    };
-
     const handleFinish = async (values: any) => {
         try {
             setLoadingSubmit(true);
-            await handleCreatePurchaseOrder(values, PurchaseOrderStatus.RECEIVED);
+            await handleCreatePurchaseOrder(values);
         } finally {
             setLoadingSubmit(false);
         }
     };
 
-    const handleCreatePurchaseOrder = async (values: any, status: PurchaseOrderStatus) => {
+    const handleCreatePurchaseOrder = async (values: any) => {
         try {
-            const details = selectedProducts.map((item: any) => ({
+            const details = dataSource.map((item: any) => ({
                 product_id: item.id,
                 quantity: item.quantity,
                 discount: item.discount,
@@ -89,26 +92,33 @@ export default function ImportGoodsForm({ subtotal, poInfos, poSummary, type, se
                 amount_paid: paymentToSupplier,
                 debt_amount: debt,
                 order_date: dayjs().format('YYYY-MM-DD HH:mm:ss'),
-                status: status,
+                status: PurchaseOrderStatus.RECEIVED,
                 details
             }
             if (type === 'edit') {
                 await updatePurchaseOrder(poInfos.po_id ?? 0, newValues);
-                showSuccessMessage(PurchaseOrderStatus.RECEIVED === status ? 'Cập nhật phiếu nhập thành công' : 'Cập nhật phiếu tạm thành công')
+                showSuccessMessage('Cập nhật phiếu nhập thành công')
+                router.push('/transactions/purchase-orders');
+
             } else {
                 await createPurchaseOrder(newValues);
-                showSuccessMessage(PurchaseOrderStatus.RECEIVED === status ? 'Tạo phiếu nhập thành công' : 'Tạo phiếu tạm thành công')
+                showSuccessMessage('Tạo phiếu nhập thành công')
+                resetForm();
             }
+            setShouldReload(true);
         } catch (error) {
             console.error('error', error);
             if (type === 'edit') {
-                showErrorMessage(PurchaseOrderStatus.RECEIVED === status ? 'Cập nhật phiếu nhập thất bại' : 'Cập nhật phiếu tạm thất bại')
+                showErrorMessage('Cập nhật phiếu nhập thất bại')
             } else {
-                showErrorMessage(PurchaseOrderStatus.RECEIVED === status ? 'Tạo phiếu nhập thất bại' : 'Tạo phiếu tạm thất bại')
+                showErrorMessage('Tạo phiếu nhập thất bại')
             }
         }
     }
 
+    const handleAddSupplier = () => {
+        setModal({ open: true, type: ActionType.CREATE, suppliers: null });
+    }
 
     useEffect(() => {
         if (!isEmpty(poInfos)) {
@@ -158,25 +168,33 @@ export default function ImportGoodsForm({ subtotal, poInfos, poSummary, type, se
                         setDateTime={setDateTimeSelected}
                     />
 
-                    {/* Tìm nhà cung cấp */}
                     <Form.Item name="supplier_id">
-                        <SelectWithButton options={options} styleWrapSelect={{ borderBottom: '1px solid #d9d9d9' }} style={{ width: "100%" }} placeholder="Tìm nhà cung cấp" onAddClick={() => setModal({ open: true, type: ActionType.CREATE, suppliers: null })} />
+                        <SelectWithButton
+                            options={options}
+                            style={{ width: '100%' }}
+                            styleWrapSelect={{ borderBottom: '1px solid #d9d9d9' }}
+                            placeholder="Tìm nhà cung cấp"
+                            onSearch={setSearchTerm}
+                            onAddClick={hasPermission(PermissionKey.SUPPLIER_CREATE) ? handleAddSupplier : undefined}
+                            onPopupScroll={handleScroll}
+                            notFoundContent={
+                                <Empty
+                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                    description="Không có kết quả phù hợp"
+                                />
+                            }
+                        />
                     </Form.Item>
 
                     {/* Các trường nhập liệu */}
                     <Form.Item name="po_code">
                         <CustomInput label="Mã phiếu nhập" name="po_code" placeholder="Mã phiếu tự động" />
                     </Form.Item>
-                    {/* <CustomInput label="Mã đặt hàng nhập" name="orderCode" placeholder="" /> */}
-                    <Flex style={{ marginTop: 12, marginBottom: 8 }}>
-                        <Text style={{ width: 120 }}>Trạng thái</Text>
-                        <Text style={{ paddingLeft: 11 }}>Phiếu tạm</Text>
-                    </Flex>
                     <Divider />
 
                     {/* Tổng tiền */}
                     <Flex justify='space-between' style={{ marginBottom: 8 }}>
-                        <Text strong >Tổng tiền hàng</Text>
+                        <Text strong >Tổng thành tiền</Text>
                         <Text>{subtotal.toLocaleString()}</Text>
                     </Flex>
 
@@ -231,16 +249,7 @@ export default function ImportGoodsForm({ subtotal, poInfos, poSummary, type, se
                 </div>
 
                 {/* Các nút thao tác */}
-                <Flex gap={8}>
-                    <Button
-                        type="default"
-                        style={{ flex: 1 }}
-                        icon={<SaveOutlined />}
-                        onClick={handleSave}
-                        loading={loadingSave}
-                    >
-                        Lưu tạm
-                    </Button>
+                <Flex>
                     <Button
                         type="primary"
                         htmlType="submit"
@@ -248,7 +257,7 @@ export default function ImportGoodsForm({ subtotal, poInfos, poSummary, type, se
                         icon={<CheckOutlined />}
                         loading={loadingSubmit}
                     >
-                        Hoàn thành
+                        {type === "create" ? "Hoàn thành" : "Cập nhật"}
                     </Button>
                 </Flex>
             </Flex>

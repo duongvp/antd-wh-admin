@@ -8,10 +8,11 @@ import { showErrorMessage, showSuccessMessage } from "@/ultils/message";
 interface ConfirmButtonProps extends ButtonProps {
     label?: string;
     customColor?: string;
-    onConfirm: () => void;
+    onConfirm: () => Promise<void>;
     confirmMessage?: string;
     messageWhenSuccess?: string;
     messageWhenError?: string;
+    setShouldReload?: (value: boolean) => void;
 }
 
 const ConfirmButton: React.FC<ConfirmButtonProps> = ({
@@ -22,6 +23,7 @@ const ConfirmButton: React.FC<ConfirmButtonProps> = ({
     messageWhenSuccess = "Thao tác thành công",
     messageWhenError = "Có lỗi xảy ra khi thực hiện thao tác",
     style,
+    setShouldReload,
     ...rest
 }) => {
     const [confirmOpen, setConfirmOpen] = React.useState(false);
@@ -29,12 +31,11 @@ const ConfirmButton: React.FC<ConfirmButtonProps> = ({
     const showConfirm = () => {
         setConfirmOpen(true);
     };
-
     const handleOk = async () => {
         setLoading(true);
         try {
-            onConfirm();
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Giả lập delay
+            await onConfirm();
+            setShouldReload && setShouldReload(true);
             showSuccessMessage(messageWhenSuccess);
             setConfirmOpen(false);
         } catch (error) {

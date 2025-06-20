@@ -1,10 +1,12 @@
 // components/FilterDrawer.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Drawer, Form, Select, DatePicker, Checkbox, Button, Row, Col, Empty } from 'antd';
 import dayjs from 'dayjs';
 import SelectWithButton from '../ui/Selects/SelectWithButton';
 import useCustomerSelect from '@/hooks/useCustomerSelect';
-import { getInvoicesByPage } from '@/services/invoiceService';
+import { PurchaseOrderStatus, Status } from '@/enums/status';
+import useSupplierSelect from '@/hooks/useSupplierSelect';
+import useUserSelect from '@/hooks/useUserSelect';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
@@ -13,20 +15,23 @@ interface FilterDrawerProps {
     open: boolean;
     onClose: () => void;
     handleSearch: (value: any) => void;
-    title?: string
+    title?: string,
+    isPurchaseOrder?: boolean
 }
 
-const FilterDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handleSearch, title = 'Bộ lọc hóa đơn' }) => {
+const FilterDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handleSearch, title = 'Bộ lọc hóa đơn', isPurchaseOrder = false }) => {
     const [form] = Form.useForm();
     const [searchTerm, setSearchTerm] = useState('');
-    const { options, handleScroll } = useCustomerSelect(searchTerm)
+    const { options, handleScroll } = isPurchaseOrder ? useSupplierSelect(searchTerm, form) : useCustomerSelect(searchTerm, form);
+    const { options: optionsUser } = useUserSelect();
 
     const onFinish = async (values: any) => {
         const { dateTime, ...rest } = values;
+        console.log("🚀 ~ onFinish ~ values:", values)
 
         const rawFilter = {
             ...rest,
-            invoice_date: dateTime?.length === 2
+            date: dateTime?.length === 2
                 ? [
                     dayjs(dateTime[0]).startOf('day').format('YYYY-MM-DD HH:mm:ss'),
                     dayjs(dateTime[1]).endOf('day').format('YYYY-MM-DD HH:mm:ss'),
@@ -42,6 +47,7 @@ const FilterDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handleSearch
                 return true;
             })
         );
+        console.log("filter", filter);
         handleSearch(filter);
         onClose();
     };
@@ -49,6 +55,11 @@ const FilterDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handleSearch
     const onReset = () => {
         form.resetFields();
     };
+
+    // useEffect(() => {
+    //     if (!open) return;
+    //     form.setFieldsValue({ "status": isPurchaseOrder ? PurchaseOrderStatus.RECEIVED : Status.RECEIVED });
+    // }, [open]);
 
     return (
         <Drawer
@@ -68,7 +79,9 @@ const FilterDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handleSearch
                 </div>
             }
         >
-            <Form form={form} layout="vertical" onFinish={onFinish}>
+            <Form form={form} layout="vertical" onFinish={onFinish} initialValues={{
+                status: isPurchaseOrder ? PurchaseOrderStatus.RECEIVED : Status.RECEIVED,
+            }}>
                 {/* Thời gian */}
                 <Form.Item
                     name="dateTime"
@@ -90,24 +103,62 @@ const FilterDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handleSearch
                     style={{ marginBottom: 16 }}>
                     <Checkbox.Group style={{ width: '100%' }}>
                         <Row gutter={[0, 8]}>
-                            <Col span={24}><Checkbox value="draft">Phiếu tạm</Checkbox></Col>
-                            <Col span={24}><Checkbox value="completed">Hoàn thành</Checkbox></Col>
-                            <Col span={24}><Checkbox value="cancelled">Đã hủy</Checkbox></Col>
+                            <Col span={24}><Checkbox value={isPurchaseOrder ? PurchaseOrderStatus.RECEIVED : Status.RECEIVED}>Hoàn thành</Checkbox></Col>
+                            <Col span={24}><Checkbox value={Status.CANCELLED}>Đã hủy</Checkbox></Col>
                         </Row>
                     </Checkbox.Group>
                 </Form.Item>
-
                 {/* Người bán */}
+                {
+                    isPurchaseOrder ? (
+                        <Form.Item
+                            label={<span style={{ fontWeight: 600, color: '#222' }}>Nhà cung cấp</span>}
+                            name="supplier_id"
+                            style={{ marginBottom: 16 }}>
+                            <SelectWithButton
+                                options={options}
+                                style={{ width: '100%' }}
+                                placeholder="Chọn nhà cung cấp"
+                                onSearch={setSearchTerm}
+                                onPopupScroll={handleScroll}
+                                notFoundContent={
+                                    <Empty
+                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                        description="Không có kết quả phù hợp"
+                                    />
+                                }
+                            />
+                        </Form.Item>
+                    ) : (
+                        <Form.Item
+                            label={<span style={{ fontWeight: 600, color: '#222' }}>Người bán</span>}
+                            name="customer_id"
+                            style={{ marginBottom: 16 }}>
+                            <SelectWithButton
+                                options={options}
+                                style={{ width: '100%' }}
+                                placeholder="Chọn khách hàng"
+                                onSearch={setSearchTerm}
+                                onPopupScroll={handleScroll}
+                                notFoundContent={
+                                    <Empty
+                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                        description="Không có kết quả phù hợp"
+                                    />
+                                }
+                            />
+                        </Form.Item>
+                    )
+                }
+                {/* Người tạo */}
                 <Form.Item
-                    label={<span style={{ fontWeight: 600, color: '#222' }}>Khách hàng</span>}
-                    name="customer_id"
+                    label={<span style={{ fontWeight: 600, color: '#222' }}>Người tạo</span>}
+                    name="user_id"
                     style={{ marginBottom: 16 }}>
                     <SelectWithButton
-                        options={options}
+                        options={optionsUser}
                         style={{ width: '100%' }}
-                        placeholder="Chọn khách hàng"
-                        onSearch={setSearchTerm}
-                        onPopupScroll={handleScroll}
+                        placeholder="Chọn người tạo"
                         notFoundContent={
                             <Empty
                                 image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -116,19 +167,8 @@ const FilterDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handleSearch
                         }
                     />
                 </Form.Item>
-
-                {/* Người tạo */}
-                <Form.Item
-                    label={<span style={{ fontWeight: 600, color: '#222' }}>Người tạo</span>}
-                    name="creator"
-                    style={{ marginBottom: 16 }}>
-                    <Select placeholder="Chọn người tạo" allowClear showSearch>
-                        <Option value="user1">Người 1</Option>
-                        <Option value="user2">Người 2</Option>
-                    </Select>
-                </Form.Item>
             </Form>
-        </Drawer>
+        </Drawer >
     );
 };
 

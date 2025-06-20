@@ -33,9 +33,13 @@ export interface ReturnOrderDetailResponse {
 
 export interface FullReturnOrderResponse extends ReturnOrderApiResponse {
     summary: {
-        total_items: number;
-        total_quantity: number;
-        total_value: number;
+        total_items: number
+        total_quantity: number
+        refund_amount: string
+        return_fee: string
+        total_amount: string
+        amount_paid: string
+        discount_total: string
     };
     items: ReturnOrderDetailResponse[];
 }
@@ -77,14 +81,14 @@ export const importReturnOrdersFromExcel = async (formatData: any): Promise<any>
     });
 };
 
-export const exportReturnOrders = async (returnOrderIds: Array<string | number>, warehouseId?: number): Promise<Blob> => {
+export const exportReturnOrders = async (returnIds: Array<string | number>, warehouseId?: number): Promise<Blob> => {
     const response = await fetch(`${API_BASE_URL}/export`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            returnOrderIds,
+            returnIds,
             warehouseId
         }),
     });
@@ -109,9 +113,10 @@ export const updateReturnOrder = async (id: string, returnOrderData: any): Promi
     });
 };
 
-export const deleteReturnOrder = async (id: string): Promise<void> => {
-    const url = `${API_BASE_URL}/${id}`;
+
+export const cancelReturnOrder = async (id: number) => {
+    const url = `${API_BASE_URL}/cancel/${id}`;
     return await fetchInstance(url, {
-        method: 'DELETE',
+        method: 'POST',
     });
 };

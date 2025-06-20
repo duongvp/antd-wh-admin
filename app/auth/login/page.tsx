@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Layout, Row, Col, Card } from 'antd'
+import { Layout, Card } from 'antd'
 import Image from 'next/image';
 import LoginForm from './components/LoginForm';
 import '@ant-design/v5-patch-for-react-19';
@@ -29,7 +29,7 @@ const Page = () => {
                         zIndex: 1,
                     }}
                 />
-                <Card style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', margin: '0 auto', zIndex: 2 }}>
+                <Card className='login-form'>
                     <LoginForm />
                 </Card>
             </Content>

@@ -1,15 +1,18 @@
 "use client";
 import { useRouter, usePathname } from "next/navigation";
-import { Layout, Menu, MenuProps } from "antd";
+import { Drawer, Layout, Menu, MenuProps } from "antd";
 import { AppstoreOutlined, BankOutlined, DashboardOutlined, LogoutOutlined, MailOutlined, SwapOutlined, UsergroupAddOutlined, UserOutlined } from '@ant-design/icons';
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useAuthStore } from "@/stores/authStore";
+import { useBreakpoint } from "@ant-design/pro-components";
+import { PermissionKey } from "@/types/permissions";
 
 const { Sider } = Layout;
 
 interface SideMenuProps {
     collapsed: boolean;
+    toggle: () => void;
 }
 
 interface LevelKeysProps {
@@ -26,37 +29,37 @@ const menuConfig = [
         icon: <DashboardOutlined />,
         label: 'Tổng quan',
         path: '/dashboard',
-        permission: 'dashboard_view'
+        permission: PermissionKey.DASHBOARD_VIEW,
     },
     {
         key: '1',
         icon: <AppstoreOutlined />,
         label: 'Hàng hoá',
-        permission: 'product_view',
+        permission: PermissionKey.PRODUCT_VIEW,
         children: [
             {
                 key: '11',
                 label: 'Sản phẩm',
                 path: '/products',
-                permission: 'product_view'
+                permission: PermissionKey.PRODUCT_VIEW,
             },
             {
                 key: '12',
                 label: 'Nhóm hàng',
                 path: '/categories',
-                permission: 'category_view'
+                permission: PermissionKey.CATEGORY_VIEW,
             },
             // {
-            //     key: '13',
-            //     label: 'Đơn vị tính',
-            //     path: '/units',
-            //     permission: 'unit_view'
+            //   key: '13',
+            //   label: 'Đơn vị tính',
+            //   path: '/units',
+            //   permission: PermissionKey.UNIT_VIEW,
             // },
             {
                 key: '14',
                 label: 'Kiểm kho',
                 path: '/transactions/inventory-checks',
-                permission: 'stock_check_view'
+                permission: PermissionKey.STOCK_CHECK_VIEW,
             },
         ],
     },
@@ -64,25 +67,25 @@ const menuConfig = [
         key: '2',
         icon: <SwapOutlined />,
         label: 'Giao dịch',
-        permission: 'order_view',
+        permission: PermissionKey.PRODUCT_VIEW, // hoặc bạn có permission riêng như `order_view`?
         children: [
             {
                 key: '22',
                 label: 'Hoá đơn',
                 path: '/transactions/invoices',
-                permission: 'invoice_view'
+                permission: PermissionKey.INVOICE_VIEW,
             },
             {
                 key: '23',
                 label: 'Nhập hàng',
                 path: '/transactions/purchase-orders',
-                permission: 'import_view'
+                permission: PermissionKey.IMPORT_VIEW,
             },
             {
                 key: '24',
                 label: 'Trả hàng',
                 path: '/transactions/returns',
-                permission: 'return_view'
+                permission: PermissionKey.RETURN_VIEW,
             },
         ],
     },
@@ -90,19 +93,19 @@ const menuConfig = [
         key: '3',
         icon: <MailOutlined />,
         label: 'Đối tác',
-        permission: 'customer_view',
+        permission: PermissionKey.CUSTOMER_VIEW,
         children: [
             {
                 key: '31',
                 label: 'Khách hàng',
                 path: '/partners/customers',
-                permission: 'customer_view'
+                permission: PermissionKey.CUSTOMER_VIEW,
             },
             {
                 key: '32',
                 label: 'Nhà cung cấp',
                 path: '/partners/suppliers',
-                permission: 'supplier_view'
+                permission: PermissionKey.SUPPLIER_VIEW,
             },
         ],
     },
@@ -111,28 +114,28 @@ const menuConfig = [
         icon: <BankOutlined />,
         label: 'Quản lý chi nhánh',
         path: '/branches',
-        permission: 'branch_view'
+        permission: PermissionKey.BRANCH_VIEW,
     },
     {
         key: '5',
         icon: <UserOutlined />,
         label: 'Quản trị viên',
         path: '/users',
-        permission: 'user_view'
+        permission: PermissionKey.USER_VIEW,
     },
     {
         key: '6',
         icon: <UsergroupAddOutlined />,
         label: 'Vai trò thành viên',
         path: '/member-roles',
-        permission: 'user_view'
+        permission: PermissionKey.USER_VIEW,
     },
     {
         key: '7',
         icon: <LogoutOutlined />,
         label: 'Đăng xuất',
         path: '/auth/login',
-        permission: null // Không cần permission để đăng xuất
+        permission: null, // Không cần permission để đăng xuất
     },
 ];
 
@@ -215,10 +218,12 @@ const getLevelKeys = (items1: LevelKeysProps[]) => {
     return key;
 };
 
-const SideMenu: React.FC<SideMenuProps> = ({ collapsed }) => {
+const SideMenu: React.FC<SideMenuProps> = ({ collapsed, toggle }) => {
     const router = useRouter();
     const pathname = usePathname();
     const { hasPermission: _hasPermission } = useAuthStore();
+    const screen = useBreakpoint();
+    const isMobile = screen && ['lg', 'md', 'sm', 'xs'].includes(screen);
     // const [mounted, setMounted] = useState(false);
 
     // useEffect(() => {
@@ -286,27 +291,56 @@ const SideMenu: React.FC<SideMenuProps> = ({ collapsed }) => {
     // if (!mounted) {
     //     return null;
     // }
-
     return (
-        <Sider trigger={null} collapsible collapsed={collapsed} theme="light">
-            <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10 }}>
-                <Image
-                    src="/warehousepro-logo.png"
-                    alt="WarehousePro Logo"
-                    width={collapsed ? 40 : 120}
-                    height={40}
-                    style={{ objectFit: 'contain' }}
-                />
-            </div>
-            <Menu
-                mode="inline"
-                selectedKeys={selectedKey ? [selectedKey] : []}
-                openKeys={stateOpenKeys}
-                onOpenChange={onOpenChange}
-                onClick={onMenuClick}
-                items={items}
-            />
-        </Sider>
+        <>
+            {isMobile ? (
+                <>
+                    <Drawer
+                        placement="left"
+                        closable
+                        onClose={toggle}
+                        open={collapsed}
+                        styles={{ body: { padding: 10 } }}
+                        width={250}
+                    >
+                        <Menu
+                            mode="inline"
+                            selectedKeys={selectedKey ? [selectedKey] : []}
+                            openKeys={stateOpenKeys}
+                            onOpenChange={onOpenChange}
+                            onClick={({ key }) => {
+                                const path = menuRoutes[key];
+                                if (path) {
+                                    router.push(path);
+                                    toggle(); // Đóng drawer khi chọn menu
+                                }
+                            }}
+                            items={items}
+                        />
+                    </Drawer>
+                </>
+            ) : (
+                <Sider trigger={null} collapsible collapsed={collapsed} theme="light">
+                    <div style={{ height: 64, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10 }}>
+                        <Image
+                            src="/warehousepro-logo.png"
+                            alt="WarehousePro Logo"
+                            width={collapsed ? 40 : 120}
+                            height={40}
+                            style={{ objectFit: 'contain' }}
+                        />
+                    </div>
+                    <Menu
+                        mode="inline"
+                        selectedKeys={selectedKey ? [selectedKey] : []}
+                        openKeys={stateOpenKeys}
+                        onOpenChange={onOpenChange}
+                        onClick={onMenuClick}
+                        items={items}
+                    />
+                </Sider>
+            )}
+        </>
     );
 };
 

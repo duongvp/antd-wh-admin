@@ -10,8 +10,6 @@ export interface CustomerApiResponse {
     email: string;
     phone: string;
     address: string;
-    area: string;
-    ward: string;
     created_at: Date;
     updated_at: Date;
 }
@@ -47,7 +45,7 @@ export const createCustomer = async (customerData: any) => {
     });
 };
 
-export const updateCustomer = async (id: string, customerData: any) => {
+export const updateCustomer = async (id: number, customerData: any) => {
     const url = `${API_BASE_URL}/${id}`;
     return await fetchInstance(url, {
         method: 'PUT',
@@ -58,9 +56,45 @@ export const updateCustomer = async (id: string, customerData: any) => {
     });
 };
 
-export const deleteCustomer = async (id: string) => {
+export const toggleCustomerStatus = async (id: number, payload: { status: 1 | 0 }) => {
+    const url = `${API_BASE_URL}/toggle/${id}`;
+    const options = {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    };
+    return await fetchInstance(url, options);
+};
+
+export const deleteCustomer = async (id: number) => {
     const url = `${API_BASE_URL}/${id}`;
     return await fetchInstance(url, {
         method: 'DELETE',
     });
+};
+
+export const importCustomersFromExcel = async (formatData: any): Promise<any> => {
+    return await fetchInstance(`${API_BASE_URL}/import`, {
+        method: "POST",
+        body: formatData,
+    });
+};
+
+
+export const exportCustomers = async (): Promise<Blob> => {
+    const response = await fetch(`${API_BASE_URL}/export`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to export products');
+    }
+
+    return await response.blob();
 };

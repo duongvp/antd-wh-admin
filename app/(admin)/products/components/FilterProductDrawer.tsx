@@ -3,6 +3,7 @@ import { Drawer, Form, Checkbox, Button, Row, Col, Radio } from 'antd';
 import { getCategories } from '@/services/categoryService';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import useCategoryStore from '@/stores/categoryStore';
+import { useAuthStore } from '@/stores/authStore';
 
 interface FilterDrawerProps {
     open: boolean;
@@ -15,6 +16,7 @@ const FilterProductDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handl
     const [allChecked, setAllChecked] = useState(false);
     const [indeterminate, setIndeterminate] = useState(false);
     const { optionsCategory } = useCategoryStore();
+    const { warehouseId } = useAuthStore((state) => state.user)
 
     const onFinish = async (values: any) => {
         if (values.is_active === 'all') {
@@ -37,7 +39,7 @@ const FilterProductDrawer: React.FC<FilterDrawerProps> = ({ open, onClose, handl
         );
 
         // Gọi callback truyền ra bên ngoài
-        handleSearch(filter);
+        handleSearch({ ...filter, warehouse_id: warehouseId });
         onClose();
     };
 

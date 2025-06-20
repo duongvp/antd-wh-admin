@@ -1,14 +1,17 @@
 import React from 'react';
 import { Row, Col, Typography, Space } from 'antd';
-import { CheckCircleOutlined, CloseCircleFilled, CopyFilled, CopyOutlined, DownloadOutlined, FolderOpenFilled, SaveFilled } from '@ant-design/icons';
+import { CheckCircleOutlined, CloseCircleFilled, DownloadOutlined } from '@ant-design/icons';
 import CustomTable from '@/components/ui/Table';
 import dayjs from 'dayjs';
 import { getInventoryCheckStatusLabel, Status } from '@/enums/status';
 import ConfirmButton from '@/components/ui/ConfirmButton';
 import ActionButton from '@/components/ui/ActionButton';
 import { useRouter } from 'next/navigation';
-import { deleteInventoryCheck, InventoryCheckBase, StockTakeSummary } from '@/services/inventoryCheckService';
+import { deleteInventoryCheck, exportInventoryChecks, InventoryCheckBase, StockTakeSummary } from '@/services/inventoryCheckService';
 import useInventoryCheckStore from '@/stores/inventoryCheckStore';
+import { PermissionKey } from '@/types/permissions';
+import { useAuthStore } from '@/stores/authStore';
+import GenericExportButton from '@/components/shared/GenericExportButton';
 
 const { Text } = Typography;
 
@@ -20,7 +23,9 @@ interface TableWithActionsProps {
 
 const TableWithActions: React.FC<TableWithActionsProps> = ({ tableData, inventoryCheckDetails, inventoryCheckSummary }) => {
     const router = useRouter();
+    const hasPermission = useAuthStore(state => state.hasPermission);
     const { setShouldReload } = useInventoryCheckStore()
+    const { warehouseId } = useAuthStore((state) => state.user)
 
     const columns = [
         { title: 'Mã hàng', dataIndex: 'product_code', key: 'product_code' },
@@ -65,7 +70,8 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ tableData, inventor
                     </Row>
                 </Col>
                 <Col span={8} style={{ height: '100%' }}>
-                    <Text type="secondary" italic>Ghi chú...</Text>
+                    <Text strong italic style={{ paddingRight: 8 }}>Ghi chú:</Text>
+                    <Text>{inventoryCheckDetails.notes}</Text>
                 </Col>
             </Row>
 
@@ -98,7 +104,7 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ tableData, inventor
                 <Col>
                     <Space>
                         {
-                            inventoryCheckDetails.status === Status.DRAFT && (
+                            inventoryCheckDetails.status === Status.DRAFT && hasPermission(PermissionKey.STOCK_CHECK_EDIT) && (
                                 <ActionButton
                                     type='primary'
                                     label='Cập nhật'
@@ -111,15 +117,22 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ tableData, inventor
                                 />
                             )
                         }
-                        <ActionButton
-                            type='primary'
-                            label='Xuất file'
-                            color='orange'
-                            variant='solid'
-                            icon={<DownloadOutlined />}
-                        />
                         {
-                            inventoryCheckDetails.status === Status.DRAFT && (
+                            hasPermission(PermissionKey.STOCK_CHECK_EXPORT) && (
+                                <GenericExportButton
+                                    exportService={exportInventoryChecks}
+                                    serviceParams={[[inventoryCheckDetails.stock_take_id], warehouseId]}
+                                    fileNamePrefix={`phieu_kiem_kho_${inventoryCheckDetails.stock_take_code}`}
+                                    buttonProps={{
+                                        color: 'orange',
+                                        variant: 'solid',
+                                    }}
+                                />
+                            )
+                        }
+
+                        {
+                            inventoryCheckDetails.status === Status.DRAFT && hasPermission(PermissionKey.STOCK_CHECK_DELETE) && (
                                 <ConfirmButton
                                     label="Xoá"
                                     customColor="red"

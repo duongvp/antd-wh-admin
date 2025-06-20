@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import { CloseCircleOutlined, SaveOutlined } from '@ant-design/icons';
 import CustomSpin from '@/components/ui/Spins';
 import { showErrorMessage, showSuccessMessage } from '@/ultils/message';
-import AreaWardSelector from '@/components/templates/AreaWardSelector';
 import useBranchStore from '@/stores/branchStore';
 import { ActionType } from '@/enums/action';
 import { createWarehouse, updateWarehouse } from '@/services/branchService';
@@ -50,11 +49,8 @@ const BranchModal = () => {
 
     useEffect(() => {
         if (modal.open) {
-            // form.setFieldsValue({ ...modal.user, role_id: 1 });
             form.setFieldsValue({
                 ...modal.warehouse,
-                // area: 'Thành phố Hà Nội - Quận Hoàn Kiếm',
-                // ward: 'Phường Đồng Xuân',
             });
         }
     }, [modal.open]);
@@ -100,7 +96,6 @@ const BranchModal = () => {
                     <Form.Item label="Địa chỉ" name="address">
                         <Input />
                     </Form.Item>
-                    <AreaWardSelector form={form} />
                 </Form>
             </Modal>
         </>

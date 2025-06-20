@@ -33,7 +33,6 @@ export const getAllProducts = async (): Promise<ProductApiResponse[]> => {
     return await fetchInstance(url);
 };
 
-
 export const getProductsByPage = async (limit: number, skip: number, filter: any): Promise<GetAllProductsResponse> => {
     return await fetchInstance(`${API_BASE_URL}/search`, {
         method: 'POST',

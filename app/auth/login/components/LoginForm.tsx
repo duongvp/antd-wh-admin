@@ -19,7 +19,21 @@ const LoginForm = () => {
             const response = await loginUser(values);
             setUser(response.data);
             setLoading(false);
-            router.push('/dashboard');
+
+            //giải pháp tạm thời
+            const data = await response.data;
+            // document.cookie = `refreshToken=${data.refreshToken}; path=/; secure; sameSite=None`;
+            // document.cookie = `user=${data.user}; path=/; secure; sameSite=None`;
+            document.cookie = `refreshToken=${data.refreshToken}; path=/`;
+            document.cookie = `user=${data.user}; path=/`;
+
+            setTimeout(() => {
+                router.push('/dashboard');
+            }, 100)
+
+            //giải pháp tạm thời
+
+            // router.push('/dashboard');
         } catch {
             setLoading(false);
             showErrorMessage('Tên đăng nhập hoặc mật khẩu không đúng');
@@ -59,10 +73,6 @@ const LoginForm = () => {
                         Đăng nhập
                     </Button>
                 </Form.Item>
-
-                {/* <Text>
-                    Bạn chưa có tài khoản? <Link href="#">Đăng ký ngay</Link>
-                </Text> */}
             </Form>
         </div>
     );

@@ -27,7 +27,7 @@ const ExportModal: React.FC<Props> = ({ open, onClose }) => {
             </div>
 
             <div style={{ textAlign: 'right' }}>
-                <ImportButton importApiFn={importProductsFromExcel} onFileImport={(data) => console.log(data)} onCloseImportModal={onClose} />
+                {/* <ImportButton importApiFn={importProductsFromExcel} onFileImport={(data) => console.log(data)} onCloseImportModal={onClose} /> */}
             </div>
         </Modal>
     );

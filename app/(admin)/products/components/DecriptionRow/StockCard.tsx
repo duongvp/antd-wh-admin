@@ -1,10 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import CustomTable from '@/components/ui/Table';
 import { ColumnsType } from 'antd/es/table';
 import { useAuthStore } from '@/stores/authStore';
 import { getStockCard } from '@/services/stockCard';
 import dayjs from 'dayjs';
-import useProductStore from '@/stores/productStore';
 import { Typography } from 'antd';
 
 const { Text } = Typography;
@@ -17,13 +16,14 @@ interface TableWithActionsProps {
 const StockCard: React.FC<TableWithActionsProps> = ({ data }) => {
     const [dataSource, setDataSource] = React.useState<any[]>([]);
     const { warehouseId } = useAuthStore((state) => state.user);
+    const [total, setTotal] = useState<number>(0);
+    const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
 
     const columns: ColumnsType = [
         {
             title: 'Chứng từ',
             dataIndex: 'document_code',
             key: 'document_code',
-            width: 200,
             render: (value: any) => {
                 return (
                     <Text copyable>
@@ -45,7 +45,6 @@ const StockCard: React.FC<TableWithActionsProps> = ({ data }) => {
             title: 'Giá GD',
             dataIndex: 'unit_price',
             key: 'unit_price',
-            width: 200,
             render: (value: any) => {
                 if (value === null) return ''
                 return Number(value).toLocaleString();
@@ -55,32 +54,41 @@ const StockCard: React.FC<TableWithActionsProps> = ({ data }) => {
             title: 'Giá vốn',
             dataIndex: 'unit_cost',
             key: 'unit_cost',
-            width: 200,
             render: (value: any) => {
                 return Number(value).toLocaleString();
             }
         },
-        { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity', width: 200 },
-        { title: 'Tồn cuối', dataIndex: 'ending_balance', key: 'ending_balance', width: 200 },
+        { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity' },
+        { title: 'Tồn cuối', dataIndex: 'ending_balance', key: 'ending_balance' },
     ];
 
     const fetchData = async () => {
         try {
-            const response = await getStockCard(data.product_id, warehouseId);
-            const newDataSource = response.data.map((item: any) => ({
+            const { current, pageSize } = pagination;
+            const skip = (current - 1) * pageSize;
+            const { data: apiData, total } = await getStockCard(data.product_id, warehouseId, pageSize, skip);
+            const newDataSource = apiData.map((item: any) => ({
                 ...item,
                 key: item.stock_card_id
             }))
+            setTotal(total)
             setDataSource(newDataSource ?? []);
         } catch (error) {
             console.error('Error fetching data:', error);
         }
     }
 
+    const handleTableChange = (paginationInfo: any) => {
+        setPagination({
+            current: paginationInfo.current,
+            pageSize: paginationInfo.pageSize,
+        });
+    };
+
     useEffect(() => {
         if (warehouseId === -1) return
         fetchData()
-    }, [warehouseId, data])
+    }, [warehouseId, data, pagination])
 
     return (
         <div>
@@ -88,7 +96,15 @@ const StockCard: React.FC<TableWithActionsProps> = ({ data }) => {
                 bordered={true}
                 dataSource={dataSource}
                 columns={columns}
-                pagination={false}
+                pagination={{
+                    position: ["bottomRight"],
+                    showSizeChanger: true,
+                    total,
+                    pageSizeOptions: ["10", "20", "50", "100"],
+                    current: pagination.current,
+                    pageSize: pagination.pageSize,
+                }}
+                onChange={handleTableChange}
                 size='small'
             />
         </div>

@@ -11,6 +11,7 @@ interface ImportModalProps {
     notes?: string[];
     importApiFn: (formData: FormData) => Promise<any>,
     linkExcel: string
+    setShouldReload: (value: boolean) => void
 }
 
 const ImportModal: React.FC<ImportModalProps> = ({
@@ -19,7 +20,8 @@ const ImportModal: React.FC<ImportModalProps> = ({
     notes,
     title = "Tạo từ file dữ liệu",
     importApiFn,
-    linkExcel
+    linkExcel,
+    setShouldReload
 }) => {
     return (
         <Modal
@@ -54,7 +56,12 @@ const ImportModal: React.FC<ImportModalProps> = ({
             </div>
 
             <div style={{ textAlign: 'right', marginTop: 16 }}>
-                <ImportButton importApiFn={importApiFn} onFileImport={(data) => console.log(data)} onCloseImportModal={onClose} />
+                <ImportButton
+                    importApiFn={importApiFn}
+                    onFileImport={(data) => console.log(data)}
+                    onCloseImportModal={onClose}
+                    setShouldReload={setShouldReload}
+                />
             </div>
         </Modal>
     );

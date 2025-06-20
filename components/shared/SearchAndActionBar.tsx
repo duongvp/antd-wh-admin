@@ -1,6 +1,6 @@
 'use client'
 import { Button, Row, Col, Flex } from 'antd';
-import { CaretDownOutlined, DownloadOutlined, FilterOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { CaretDownOutlined, FilterOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import CustomSearchInput from '@/components/ui/Inputs/CustomSearchInput';
 import React from 'react';
 
@@ -39,33 +39,40 @@ export default function SearchAndActionsBar({
                 )}
             </Col>
             <Col xl={18} lg={16} md={12} sm={24} xs={24}>
-                <Flex align='end' justify='end' gap={16}>
-                    <Button type="primary" onClick={handleAddBtn}>
-                        <PlusOutlined />
-                        {titleBtnAdd}
-                        <CaretDownOutlined />
-                    </Button>
-
-                    {handleImportClick && (
-                        <Button
-                            type="primary"
-                            icon={<UploadOutlined />}
-                            onClick={handleImportClick}
-                        >
-                            Import
-                        </Button>
-                    )}
-                    {extraExportButton}
-                    {/* {showExport && <Button type="primary" icon={<DownloadOutlined />}>Xuất file</Button>} */}
-                    {
-                        handleFilterBtn && (
-                            <Button type="default" onClick={handleFilterBtn}>
-                                <FilterOutlined />
+                <Flex
+                    vertical
+                    align='stretch'
+                    justify='end'
+                    style={{ gap: 8 }} // dùng style thay vì prop gap nếu cần độ tương thích cao
+                >
+                    <Flex wrap="wrap" justify="end" gap={8}>
+                        {
+                            handleAddBtn && (
+                                <Button type="primary" onClick={handleAddBtn} icon={<PlusOutlined />}>
+                                    {titleBtnAdd}
+                                    <CaretDownOutlined />
+                                </Button>
+                            )
+                        }
+                        {handleImportClick && (
+                            <Button
+                                type="primary"
+                                icon={<UploadOutlined />}
+                                onClick={handleImportClick}
+                            >
+                                Import
                             </Button>
-                        )
-                    }
+                        )}
+
+                        {extraExportButton}
+
+                        {handleFilterBtn && (
+                            <Button type="default" onClick={handleFilterBtn} icon={<FilterOutlined />} />
+                        )}
+                    </Flex>
                 </Flex>
             </Col>
+
             {extraButtons}
         </Row>
     );

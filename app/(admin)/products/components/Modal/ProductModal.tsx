@@ -1,13 +1,11 @@
 'use client'; // Cần client component vì sử dụng interactivity
-import { Modal, Input, Upload, InputNumber, Collapse, Row, Col, Form, Button, Space, CollapseProps } from 'antd';
-import { CloseCircleOutlined, DeleteOutlined, PlusOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
+import { Modal, Input, Upload, InputNumber, Row, Col, Form, Button } from 'antd';
+import { CloseCircleOutlined, SaveOutlined, UploadOutlined } from '@ant-design/icons';
 import type { UploadFile } from 'antd/es/upload/interface';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import SelectWithButton from '@/components/ui/Selects/SelectWithButton';
 import CategoryModal from '@/app/(admin)/categories/components/SearchAndActionsBar/CategoryModal';
-import TrademarkModal from '@/app/(admin)/trademarks/components/SearchAndActionsBar/TrademarkModal';
 import { showErrorMessage, showSuccessMessage } from '@/ultils/message';
-import CustomInput from '@/components/ui/Inputs';
 import useProductStore from '@/stores/productStore';
 import useCategoryStore from '@/stores/categoryStore';
 import { ActionType } from '@/enums/action';
@@ -19,120 +17,7 @@ import { useAuthStore } from '@/stores/authStore';
 import useUnitStore from '@/stores/unitStore';
 import { Status } from '@/enums/status';
 import { createInventoryCheck } from '@/services/inventoryCheckService';
-import { isEmpty, set } from 'lodash';
-
-interface SubUnit {
-    id: string;
-    name: string;
-    conversionValue: number;
-    price: number;
-    sellDirectly: boolean;
-}
-
-// const UnitOfMeasureCollapse = () => {
-//     const [subUnits, setSubUnits] = useState<SubUnit[]>([]);
-
-//     const addSubUnit = () => {
-//         setSubUnits((prev) => [
-//             ...prev,
-//             {
-//                 id: Math.random().toString(36).substring(2, 9),
-//                 name: "",
-//                 conversionValue: 1,
-//                 price: 0,
-//                 sellDirectly: true,
-//             },
-//         ]);
-//     };
-
-//     const updateSubUnit = (id: string, key: keyof SubUnit, value: any) => {
-//         setSubUnits((prev) =>
-//             prev.map((item) =>
-//                 item.id === id ? { ...item, [key]: value } : item
-//             )
-//         );
-//     };
-
-//     const removeSubUnit = (id: string) => {
-//         setSubUnits((prev) => prev.filter((item) => item.id !== id));
-//     };
-
-//     const items: CollapseProps["items"] = [
-//         {
-//             key: "1",
-//             label: "Đơn vị tính",
-//             children: (
-//                 <Space direction="vertical" style={{ width: "100%" }}>
-//                     {/* Base Unit */}
-//                     <Space
-//                         style={{ display: "flex", justifyContent: "space-between", width: "100%" }}
-//                         wrap
-//                     >
-//                         <CustomInput
-//                             groupStyle={{ flexDirection: "column", alignItems: "flex-start" }}
-//                             label="Đơn vị cơ bản"
-//                             defaultValue=""
-//                             style={{ width: 150 }}
-//                         />
-//                     </Space>
-
-//                     {/* Sub Units */}
-//                     {subUnits.map((unit) => (
-//                         <Space
-//                             key={unit.id}
-//                             style={{ display: "flex", justifyContent: "space-between", width: "100%" }}
-//                             align="center"
-//                             wrap
-//                         >
-//                             <CustomInput
-//                                 groupStyle={{ flexDirection: "column", alignItems: "flex-start" }}
-//                                 label="Tên đơn vị"
-//                                 value={unit.name}
-//                                 onChange={(e) => updateSubUnit(unit.id, "name", e.target.value)}
-//                                 style={{ width: 200 }}
-//                             />
-//                             <CustomInput
-//                                 groupStyle={{ flexDirection: "column", alignItems: "flex-start" }}
-//                                 label="Giá trị quy đổi"
-//                                 value={unit.conversionValue}
-//                                 onChange={(value) =>
-//                                     updateSubUnit(unit.id, "conversionValue", value || 1)
-//                                 }
-//                                 style={{ width: 200, textAlign: "left" }}
-//                                 isNumber
-//                             />
-//                             <CustomInput
-//                                 groupStyle={{ flexDirection: "column", alignItems: "flex-start" }}
-//                                 label="Giá trị quy đổi"
-//                                 value={unit.price}
-//                                 onChange={(value) => updateSubUnit(unit.id, "price", value || 0)}
-//                                 isNumber
-//                                 style={{ width: 200, textAlign: "left" }}
-//                             />
-//                             <Button
-//                                 type="text"
-//                                 icon={<DeleteOutlined />}
-//                                 onClick={() => removeSubUnit(unit.id)}
-//                             />
-//                         </Space>
-//                     ))}
-
-//                     {/* Add Unit Button */}
-//                     <Button icon={<PlusOutlined />} onClick={addSubUnit}>
-//                         Thêm đơn vị
-//                     </Button>
-//                 </Space>
-//             ),
-//         },
-//     ];
-
-//     return <Collapse
-//         items={items}
-//         style={{ marginTop: 24 }}
-//         size="small"
-//         expandIconPosition="end"
-//         bordered />;
-// }
+import { isEmpty } from 'lodash';
 
 const ProductModal = () => {
     const { modal, resetModal, setShouldReload } = useProductStore();
@@ -183,8 +68,6 @@ const ProductModal = () => {
         if (warehouseId === -1) return
         try {
             setLoading(true);
-            // await createCategory(values);
-            console.log("🚀 ~ handleFinish ~ values:", values);
             const data = {
                 ...values,
                 warehouse_id: warehouseId
@@ -193,7 +76,7 @@ const ProductModal = () => {
             if (modal.type === ActionType.CREATE || modal.type === ActionType.COPY) {
                 await createProduct(data);
             } else if (modal.type === ActionType.UPDATE) {
-                // await updateProduct(modal.product?.product_id || 0, data);
+                await updateProduct(modal.product?.product_id || 0, data);
                 if (Number(modal.product?.stock) !== Number(values.stock)) {
                     const stock_take_details = [{
                         product_id: modal.product?.product_id || 0,
@@ -225,7 +108,7 @@ const ProductModal = () => {
     const fetchCategories = async (reload: boolean = false) => {
         try {
             const data = await getCategories();
-            const formattedOptions = data.map((item: { category_id: string; category_name: string }) => ({
+            const formattedOptions = data.map((item: { category_id: number; category_name: string }) => ({
                 label: item.category_name,
                 labelText: item.category_name,
                 value: item.category_id,

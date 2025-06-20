@@ -3,15 +3,7 @@ import { useEffect, useState } from 'react';
 import { getInvoiceById } from '@/services/invoiceService';
 import { IInvoiceDetail, IInvoiceTableData } from '@/types/invoice';
 
-interface UseInvoiceTableDataReturn {
-    tableData: Partial<IInvoiceTableData>[];
-    invoiceDetails: Partial<IInvoiceDetail>;
-    invoiceSummary: any;
-    loading: boolean;
-    error: string | null;
-}
-
-export function useInvoiceTableData(invoiceId: number): UseInvoiceTableDataReturn {
+export function useInvoiceTableData(invoiceId: number, deps: React.DependencyList = []) {
     const [tableData, setTableData] = useState<Partial<IInvoiceTableData>[]>([]);
     const [invoiceDetails, setInvoiceDetails] = useState<Partial<IInvoiceDetail>>({});
     const [invoiceSummary, setInvoiceSummary] = useState<any>({});
@@ -38,7 +30,7 @@ export function useInvoiceTableData(invoiceId: number): UseInvoiceTableDataRetur
         if (invoiceId) {
             fetchData();
         }
-    }, [invoiceId]);
+    }, [invoiceId, ...deps]);
 
     return { tableData, invoiceDetails, invoiceSummary, loading, error };
 }

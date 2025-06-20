@@ -3,7 +3,7 @@ import { message } from 'antd';
 
 // Cấu hình mặc định cho tất cả message
 message.config({    // Cách top 80px (tuỳ chỉnh)
-    duration: 2,       // Mặc định tự đóng sau 2s
+    duration: 3,       // Mặc định tự đóng sau 2s
     maxCount: 3,       // Tối đa 3 message cùng lúc
 });
 

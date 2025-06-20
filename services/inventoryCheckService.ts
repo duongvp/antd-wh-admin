@@ -38,6 +38,7 @@ export interface InventoryCheckBase {
     user_phone: string;
     warehouse_name: string;
     warehouse_address: string;
+    notes: string;
 }
 
 export interface StockTakeSummary {
@@ -89,7 +90,7 @@ export const importInventoryChecksFromExcel = async (formatData: any): Promise<a
     });
 };
 
-export const exportInventoryChecks = async (stockTakeIds: Array<string | number>, warehouseId?: number): Promise<Blob> => {
+export const exportInventoryChecks = async (stockTakeIds: Array<string | number | undefined>, warehouseId?: number): Promise<Blob> => {
     const response = await fetch(`${API_BASE_URL}/export`, {
         method: 'POST',
         headers: {

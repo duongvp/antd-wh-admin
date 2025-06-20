@@ -1,83 +1,69 @@
 import { useEffect, useState } from 'react';
-import { Form, Typography, Button, Divider, Flex, Input, Empty, Spin } from 'antd';
-import { CheckOutlined, SaveOutlined } from '@ant-design/icons';
+import { Form, Typography, Button, Divider, Flex, Input, Empty } from 'antd';
+import { CheckOutlined } from '@ant-design/icons';
 import CustomInput from '@/components/ui/Inputs'; // bạn nhớ tạo cho chuẩn nhé
 import SelectWithButton from '@/components/ui/Selects/SelectWithButton';
 import { IInvoiceDetail, ITypeImportInvoice } from '@/types/invoice';
 import useCustomerSelect from '@/hooks/useCustomerSelect';
 import CustomerModal from '@/app/(admin)/partners/customers/components/Modal/CustomerModal';
 import useCustomerStore from '@/stores/customerStore';
-import { getInvoiceStatusLabel, InvoiceStatus } from '@/enums/invoice';
+import { InvoiceStatus } from '@/enums/invoice';
 import HeaderForm from '@/components/shared/HeaderForm';
 import { ActionType } from '@/enums/action';
 import { showErrorMessage, showSuccessMessage } from '@/ultils/message';
-import { createInvoice, updateInvoice, updateInvoicePayment } from '@/services/invoiceService';
+import { createInvoice, updateInvoice } from '@/services/invoiceService';
 import dayjs from 'dayjs';
 import { useAuthStore } from '@/stores/authStore';
 import { isEmpty } from 'lodash';
+import { IDataTypeProductSelect } from '@/types/productSelect';
+import { PermissionKey } from '@/types/permissions';
+import useProductStore from '@/stores/productStore';
 
 const { Text } = Typography;
 
 interface ImportOrdersFormProps {
     subtotal: number;
-    type?: ITypeImportInvoice;
-    invoiceDetails?: Partial<IInvoiceDetail>;
-    invoiceSummary?: any;
-    selectedProducts?: any;
+    setSubtotal: React.Dispatch<number>;
+    type: ITypeImportInvoice;
+    invoiceDetails: Partial<IInvoiceDetail>;
+    invoiceSummary: any;
+    dataSource: IDataTypeProductSelect[]
+    setDataSource: React.Dispatch<React.SetStateAction<IDataTypeProductSelect[]>>;
 }
 
-export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoiceSummary, selectedProducts }: ImportOrdersFormProps) {
+export default function ImportOrdersForm({ subtotal, setSubtotal, type, invoiceDetails, invoiceSummary, dataSource, setDataSource }: ImportOrdersFormProps) {
     const [form] = Form.useForm();
     const [discountAmount, setDiscountAmount] = useState<number>(0);
     const [customerPayment, setCustomerPayment] = useState<number>(0);
     const { setModal } = useCustomerStore();
     const [searchTerm, setSearchTerm] = useState('');
-    const { options, handleScroll } = useCustomerSelect(searchTerm)
-    const [loadingSave, setLoadingSave] = useState(false);
     const [loadingSubmit, setLoadingSubmit] = useState(false);
     const { warehouseId, userId } = useAuthStore(state => state.user);
     const [userIdSelected, setUserIdSelected] = useState<number>(userId);
     const [dateTimeSelected, setDateTimeSelected] = useState<dayjs.Dayjs | null | undefined>(dayjs());
-    const [statusInvoice, setStatusInvoice] = useState<InvoiceStatus>(InvoiceStatus.DRAFT);
+    const { options, handleScroll } = useCustomerSelect(searchTerm, form)
+    const { hasPermission } = useAuthStore();
+    const { setShouldReload } = useProductStore()
 
-    const handleSave = async () => {
-        try {
-            setLoadingSave(true);
-            const values = form.getFieldsValue();
-            await handleCreateInvoice(values, InvoiceStatus.DRAFT);
-        } finally {
-            setLoadingSave(false);
-        }
-    };
+    const resetForm = () => {
+        setDataSource([])
+        setSubtotal(0)
+        form.resetFields();
+    }
 
     const handleFinish = async (values: any) => {
         try {
             setLoadingSubmit(true);
-            await handleCreateInvoice(values, InvoiceStatus.RECEIVED);
+            await handleCreateInvoice(values);
         } finally {
             setLoadingSubmit(false);
         }
     };
 
-    const handlePayment = async () => {
-        try {
-            setLoadingSubmit(true);
-            await updateInvoicePayment(invoiceDetails?.invoice_id || 0, { amount_paid: customerPayment, debt_amount: calculateDebt() });
-            showSuccessMessage('Thanh toán hóa đơn công!');
-        } catch (error) {
-            console.log('error', error);
-            showErrorMessage('Thanh toán hóa đơn thất bại');
-        }
-        finally {
-            setLoadingSubmit(false);
-        }
-    };
-
-    const handleCreateInvoice = async (values: any, type: InvoiceStatus) => {
+    const handleCreateInvoice = async (values: any) => {
         if (warehouseId === -1) return
         try {
-            console.log('selectedProducts', selectedProducts);
-            const details = selectedProducts.map((item: any) => ({
+            const details = dataSource.map((item: any) => ({
                 product_id: item.id,
                 quantity: item.quantity,
                 discount: item.discount,
@@ -94,16 +80,23 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
                 amount_paid: customerPayment,
                 debt_amount: calculateDebt(),
                 invoice_date: dateTimeSelected?.format('YYYY-MM-DD HH:mm:ss'),
-                status: type,
+                status: InvoiceStatus.RECEIVED,
                 notes: values.notes,
                 details
             }
-            console.log('newValues', newValues);
-            await createInvoice(newValues);
-            showSuccessMessage(InvoiceStatus.RECEIVED === type ? 'Tạo hoá đơn thành công' : 'Tạo hoá đơn tạm thành công')
+            if (type === 'edit') {
+                await updateInvoice(invoiceDetails.invoice_id ?? 0, newValues);
+                showSuccessMessage('Cập nhật hoá đơn thành công')
+                setShouldReload(true);
+            } else {
+                await createInvoice(newValues);
+                showSuccessMessage('Tạo hoá đơn thành công')
+                setShouldReload(true);
+                resetForm();
+            }
         } catch (error) {
             console.error('error', error);
-            showErrorMessage(InvoiceStatus.RECEIVED === type ? 'Tạo hoá đơn thất bại' : 'Tạo hoá đơn tạm thất bại')
+            showErrorMessage('Tạo hoá đơn thất bại')
         }
     }
 
@@ -117,6 +110,10 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
         return total;
     };
 
+    const handleAddCustomer = () => {
+        setModal({ open: true, type: ActionType.CREATE, customer: null })
+    };
+
     useEffect(() => {
         if (!isEmpty(invoiceDetails) && !isEmpty(invoiceSummary)) {
             form.setFieldsValue({
@@ -127,7 +124,6 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
             setDateTimeSelected(dayjs(invoiceDetails?.invoice_date));
             setDiscountAmount(invoiceSummary?.discount_amount);
             setCustomerPayment(invoiceSummary?.amount_paid);
-            setStatusInvoice(invoiceDetails?.status as InvoiceStatus)
         }
     }, [invoiceDetails, type, invoiceSummary])
 
@@ -169,7 +165,7 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
                             styleWrapSelect={{ borderBottom: '1px solid #d9d9d9' }}
                             placeholder="Tìm khách hàng"
                             onSearch={setSearchTerm}
-                            onAddClick={() => setModal({ open: true, type: ActionType.CREATE, customer: null })}
+                            onAddClick={hasPermission(PermissionKey.CUSTOMER_CREATE) ? handleAddCustomer : undefined}
                             onPopupScroll={handleScroll}
                             notFoundContent={
                                 <Empty
@@ -182,13 +178,8 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
 
                     {/* Các trường nhập liệu */}
                     <Form.Item name="invoice_code">
-                        <CustomInput label="Mã phiếu đặt" name="invoice_code" placeholder="Mã phiếu tự động" disabled={statusInvoice === InvoiceStatus.RECEIVED} />
+                        <CustomInput label="Mã phiếu đặt" name="invoice_code" placeholder="Mã phiếu tự động" />
                     </Form.Item>
-                    {/* <CustomInput label="Mã đặt hàng nhập" name="orderCode" placeholder="" /> */}
-                    <Flex style={{ marginTop: 12, marginBottom: 8 }}>
-                        <Text style={{ width: 120 }}>Trạng thái</Text>
-                        <Text style={{ paddingLeft: 11 }}>{statusInvoice === InvoiceStatus.DRAFT ? "Phiếu tạm" : "Đã hoàn thành"}</Text>
-                    </Flex>
                     <Divider />
 
                     <Flex justify='space-between' style={{ marginBottom: 8 }}>
@@ -198,7 +189,7 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
 
                     {/* Tổng tiền */}
                     <Flex justify='space-between' style={{ marginBottom: 8 }}>
-                        <Text strong >Tổng tiền hàng</Text>
+                        <Text strong >Tổng thành tiền</Text>
                         <Text>{subtotal.toLocaleString()}</Text>
                     </Flex>
 
@@ -209,7 +200,6 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
                         isNumber
                         lablelStyle={{ width: "70%" }}
                         inputNumberProps={{
-                            disabled: statusInvoice === InvoiceStatus.RECEIVED,
                             min: 0,
                             value: discountAmount,
                             formatter: (val) => `${val}`.replace(/\B(?=(\d{3})+(?!\d))/g, ','),
@@ -223,7 +213,6 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
                         <Text strong>Khách cần trả</Text>
                         <Text>{calculateTotal().toLocaleString()}</Text>
                     </Flex>
-
 
                     <CustomInput
                         label="Khách thanh toán"
@@ -254,45 +243,20 @@ export default function ImportOrdersForm({ subtotal, type, invoiceDetails, invoi
                     </Form.Item>
                 </div>
 
-                {/* Các nút thao tác */}
-                {
-                    statusInvoice === InvoiceStatus.DRAFT ? (
-                        <Flex gap={8}>
-                            <Button
-                                type="default"
-                                style={{ flex: 1 }}
-                                icon={<SaveOutlined />}
-                                onClick={handleSave}
-                                loading={loadingSave}
-                            >
-                                Lưu tạm
-                            </Button>
-                            <Button
-                                type="primary"
-                                htmlType="submit"
-                                style={{ flex: 1 }}
-                                icon={<CheckOutlined />}
-                                loading={loadingSubmit}
-                            >
-                                Hoàn thành
-                            </Button>
-                        </Flex>
-                    ) : (
-                        <Flex gap={8}>
-                            <Button
-                                type='primary'
-                                onClick={handlePayment}
-                                style={{ flex: 1 }}
-                                icon={<CheckOutlined />}
-                                loading={loadingSubmit}
-                            >
-                                Thanh toán
-                            </Button>
-                        </Flex>
-                    )
-                }
 
-
+                <Flex gap={8}>
+                    <Button
+                        type='primary'
+                        htmlType="submit"
+                        style={{ flex: 1 }}
+                        icon={<CheckOutlined />}
+                        loading={loadingSubmit}
+                    >
+                        {
+                            type === "create" ? "Hoàn thành" : "Cập nhật"
+                        }
+                    </Button>
+                </Flex>
             </Flex>
             <CustomerModal />
         </Form>

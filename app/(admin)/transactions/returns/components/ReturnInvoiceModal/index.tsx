@@ -6,10 +6,11 @@ import type { ColumnsType } from "antd/es/table";
 import { getInvoicesByPage, InvoiceApiResponse } from "@/services/invoiceService";
 import { Button, Col, DatePicker, Modal, notification, Row, Space } from "antd";
 import { getInvoiceStatusLabel, InvoiceStatus } from "@/enums/invoice";
-import { isEmpty } from "lodash";
 import CustomSearchInput from "@/components/ui/Inputs/CustomSearchInput";
 import { useAuthStore } from "@/stores/authStore";
 import { Status } from "@/enums/status";
+import { useRouter } from "next/navigation";
+import useReturnStore from "@/stores/returnStore";
 
 interface Props {
     visible: boolean;
@@ -35,14 +36,15 @@ const ReturnInvoiceModal = ({ visible, onClose }: Props) => {
     const [api] = notification.useNotification();
     const [total, setTotal] = useState<number>(0);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
-    const [filter, setFilter] = useState<InvoiceFilter>({ status: Status.RECEIVED });
+    const [filter, setFilter] = useState<InvoiceFilter>({ status: Status.RECEIVED, onlyReturnable: true });
     const [fromDate, setFromDate] = useState<dayjs.Dayjs | null>(null);
     const [toDate, setToDate] = useState<dayjs.Dayjs | null>(null);
     const { warehouseId } = useAuthStore((state) => state.user)
-    console.log("🚀 ~ ReturnInvoiceModal ~ warehouseId:", warehouseId)
+    const router = useRouter();
+    const shouldReload = useReturnStore((state) => state.shouldReload);
 
     const onSelect = (record: DataType) => {
-        window.open(`/transactions/returns/create/${record.invoice_id}`, '_blank');
+        router.push(`/transactions/returns/create/${record.invoice_id}`);
     }
 
     const columns: ColumnsType<DataType> = [
@@ -83,7 +85,7 @@ const ReturnInvoiceModal = ({ visible, onClose }: Props) => {
     ];
 
     const fetchData = useCallback(async () => {
-        if (warehouseId === -1) return
+        if (!filter.warehouse_id || filter.warehouse_id === -1) return
         try {
             setLoading(true);
             const { current, pageSize } = pagination;
@@ -137,14 +139,6 @@ const ReturnInvoiceModal = ({ visible, onClose }: Props) => {
         setFilter({ ...filter, product_name: value });
     };
 
-    const handleFilterOrder = (values: any) => {
-        if (isEmpty(values)) {
-            setFilter({ invoice_code: filter.invoice_code });
-            return
-        }
-        setFilter({ ...filter, ...values });
-    };
-
     const handleFromDateChange = (date: dayjs.Dayjs | null) => {
         const newFromDate = date?.startOf("day") || null;
         const newToDate = toDate?.endOf("day") || null;
@@ -185,6 +179,12 @@ const ReturnInvoiceModal = ({ visible, onClose }: Props) => {
         if (warehouseId === -1) return
         setFilter({ ...filter, warehouse_id: warehouseId });
     }, [warehouseId]);
+
+    useEffect(() => {
+        if (shouldReload) {
+            fetchData();
+        }
+    }, [shouldReload])
 
     return (
         <div>

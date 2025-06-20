@@ -1,36 +1,26 @@
 import React from 'react';
-import { Row, Col, Typography, Space, Button } from 'antd';
-import { CloseCircleFilled, CopyOutlined, DeleteOutlined, DownloadOutlined, FolderOpenFilled, FolderOpenOutlined, SaveFilled, SaveOutlined } from '@ant-design/icons';
+import { Row, Col, Typography, Space } from 'antd';
+import { CheckCircleFilled, CloseCircleFilled, DownloadOutlined } from '@ant-design/icons';
 import CustomTable from '@/components/ui/Table';
 import dayjs from 'dayjs';
 import { getReturnOrderStatusLabel, Status } from '@/enums/status';
-import Link from 'next/link';
 import ConfirmButton from '@/components/ui/ConfirmButton';
 import ActionButton from '@/components/ui/ActionButton';
 import { useRouter } from 'next/navigation';
+import PrintReturnWrapper from './PrintReturnWrapper';
+import { useAuthStore } from '@/stores/authStore';
+import { PermissionKey } from '@/types/permissions';
+import { cancelReturnOrder, exportReturnOrders } from '@/services/returnService';
+import useReturnStore from '@/stores/returnStore';
+import GenericExportButton from '@/components/shared/GenericExportButton';
 
 const { Text } = Typography;
 
-// interface TableWithActionsProps {
-//     data: any[];
-//     returnOrderDetails: {
-//         returnOrderId: number;
-//         time: string;
-//         created_by: string;
-//         branch: string;
-//         status: Status;
-//     };
-//     returnOrderSummary: {
-//         total_items: number;
-//         total_variance: number;
-//         total_value_variance: number;
-//     };
-// }
-
 const TableWithActions: React.FC<any> = ({ data, returnOrderDetails, returnOrderSummary }) => {
-    console.log("🚀 ~ data:", data)
-    console.log("🚀 ~ returnOrderDetails:", returnOrderDetails)
     const router = useRouter();
+    const hasPermission = useAuthStore(state => state.hasPermission);
+    const setShouldReload = useReturnStore(state => state.setShouldReload);
+    const { warehouseId } = useAuthStore(state => state.user);
 
     const columns = [
         { title: 'Mã hàng', dataIndex: 'product_code', key: 'product_code' },
@@ -46,14 +36,10 @@ const TableWithActions: React.FC<any> = ({ data, returnOrderDetails, returnOrder
         },
     ];
 
-    const handleCopyClick = () => {
-        console.log('cap nhật');
-    }
-
     return (
         <div>
             <Row gutter={24} style={{ marginBottom: 12 }}>
-                <Col span={6}>
+                <Col xs={24} md={12} xl={10} xxl={6}>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Mã trả hàng:</Text></Col>
                         <Col><Text>{returnOrderDetails.return_code}</Text></Col>
@@ -68,11 +54,11 @@ const TableWithActions: React.FC<any> = ({ data, returnOrderDetails, returnOrder
                     </Row>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Mã hoá đơn:</Text></Col>
-                        <Col><Link href="#">{returnOrderDetails.invoice_code}</Link></Col>
+                        <Col><Text copyable>{returnOrderDetails.invoice_code}</Text></Col>
                     </Row>
                 </Col>
 
-                <Col span={6}>
+                <Col xs={24} md={12} xl={8} xxl={6}>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Trạng thái:</Text></Col>
                         <Col><Text>{getReturnOrderStatusLabel(returnOrderDetails.status)}</Text></Col>
@@ -83,8 +69,9 @@ const TableWithActions: React.FC<any> = ({ data, returnOrderDetails, returnOrder
                     </Row>
                 </Col>
 
-                <Col span={8}>
-                    <Text type="secondary" italic>Ghi chú...</Text>
+                <Col xs={24} md={24} xl={6} xxl={8}>
+                    <Text italic style={{ paddingRight: 12 }}> Ghi chú:</Text>
+                    <Text italic>{returnOrderDetails.notes}</Text>
                 </Col>
             </Row>
 
@@ -97,7 +84,7 @@ const TableWithActions: React.FC<any> = ({ data, returnOrderDetails, returnOrder
             />
 
             <Row gutter={24} justify={"end"} align={"top"} style={{ marginTop: 12 }}>
-                <Col span={6}>
+                <Col xs={12} xl={8} xxl={6}>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Tổng số lượng</Text></Col>
                         <Col span={16} style={{ textAlign: "end" }}><Text>{returnOrderSummary?.total_quantity}</Text></Col>
@@ -125,56 +112,62 @@ const TableWithActions: React.FC<any> = ({ data, returnOrderDetails, returnOrder
                 </Col>
             </Row>
 
-
-            <Row justify="end" align="middle" style={{ marginTop: 16 }}>
-                <Col>
-                    <Space>
-                        {
-                            returnOrderDetails.status === Status.DRAFT && (
-                                <ActionButton
-                                    type='primary'
-                                    label='Cập nhật'
-                                    color='green'
-                                    variant='solid'
-                                    icon={<FolderOpenFilled />}
-                                    onClick={() => {
-                                        router.push(`/transactions/`)
-                                    }}
-                                />
-                            )
-                        }
-                        <ActionButton
-                            type='primary'
-                            label='Sao chép'
-                            color='green'
-                            variant='solid'
-                            icon={<CopyOutlined />}
-                            onClick={() => {
-                                router.push(`/transactions/`)
-                            }}
-                        />
-                        <ActionButton
-                            type='primary'
-                            label='Xuất file'
-                            color='orange'
-                            variant='solid'
-                            icon={<DownloadOutlined />}
-                        />
-                        <ConfirmButton
-                            label="Huỷ bỏ"
-                            customColor="red"
-                            icon={<CloseCircleFilled />}
-                            onConfirm={() => {
-                                console.log("Hủy bỏ đã được xác nhận");
-                            }}
-                            confirmMessage="Bạn có chắc chắn muốn huỷ thao tác này?"
-                            messageWhenSuccess="Huỷ phiếu thành công"
-                            messageWhenError="Có lỗi xảy ra khi huỷ phiếu"
-                        />
-
-                    </Space>
-                </Col>
-            </Row>
+            {
+                returnOrderDetails.status !== Status.CANCELLED && (
+                    <Row justify="end" align="middle" style={{ marginTop: 16 }}>
+                        <Col>
+                            <Space>
+                                {
+                                    hasPermission(PermissionKey.RETURN_EDIT) && (
+                                        <ActionButton
+                                            type='primary'
+                                            label='Cập nhật'
+                                            color='green'
+                                            variant='solid'
+                                            icon={<CheckCircleFilled />}
+                                            onClick={() => {
+                                                router.push(`/transactions/returns/edit/${returnOrderDetails.return_id}`)
+                                            }}
+                                        />
+                                    )
+                                }
+                                {
+                                    hasPermission(PermissionKey.RETURN_PRINT) && (
+                                        <PrintReturnWrapper data={data} details={returnOrderDetails} summary={returnOrderSummary} />
+                                    )
+                                }
+                                {
+                                    hasPermission(PermissionKey.RETURN_EXPORT) && (
+                                        <GenericExportButton
+                                            exportService={exportReturnOrders}
+                                            serviceParams={[[returnOrderDetails.return_id], warehouseId]}
+                                            fileNamePrefix={`phiếu trả hàng ${returnOrderDetails.return_code}`}
+                                            buttonProps={{
+                                                color: 'orange',
+                                                variant: 'solid',
+                                            }}
+                                        />
+                                    )
+                                }
+                                {
+                                    hasPermission(PermissionKey.RETURN_VOID) && (
+                                        <ConfirmButton
+                                            label="Huỷ bỏ"
+                                            customColor="red"
+                                            icon={<CloseCircleFilled />}
+                                            onConfirm={async () => await cancelReturnOrder(returnOrderDetails.return_id)}
+                                            confirmMessage="Bạn có chắc chắn muốn huỷ thao tác này?"
+                                            messageWhenSuccess="Huỷ phiếu thành công"
+                                            messageWhenError="Có lỗi xảy ra khi huỷ phiếu"
+                                            setShouldReload={setShouldReload}
+                                        />
+                                    )
+                                }
+                            </Space>
+                        </Col>
+                    </Row>
+                )
+            }
         </div>
     );
 };

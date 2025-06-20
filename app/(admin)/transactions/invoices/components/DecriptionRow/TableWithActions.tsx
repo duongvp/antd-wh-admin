@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Row, Col, Typography, Space, Button, DatePicker, Empty } from 'antd';
+import React from 'react';
+import { Row, Col, Typography, Space } from 'antd';
 import { CheckCircleFilled, CheckCircleOutlined, CloseCircleFilled, CopyOutlined, DownloadOutlined, RetweetOutlined, SaveFilled, SaveOutlined, ShareAltOutlined } from '@ant-design/icons';
 import CustomTable from '@/components/ui/Table';
 import { ColumnsType } from 'antd/es/table';
@@ -10,8 +10,11 @@ import { getInvoiceStatusLabel, InvoiceStatus } from '@/enums/invoice';
 import PrintInvoiceWrapper from './PrintInvoiceWrapper';
 import ConfirmButton from '@/components/ui/ConfirmButton';
 import ActionButton from '@/components/ui/ActionButton';
-import SelectWithButton from '@/components/ui/Selects/SelectWithButton';
-import { updateInvoice } from '@/services/invoiceService';
+import { cancelInvoice, exportInvoices } from '@/services/invoiceService';
+import { useAuthStore } from '@/stores/authStore';
+import { PermissionKey } from '@/types/permissions';
+import useInvoiceStore from '@/stores/invoiceStore';
+import GenericExportButton from '@/components/shared/GenericExportButton';
 const { Text, Link } = Typography;
 
 // Sửa lại prop nhận vào cho TableWithActions
@@ -23,9 +26,11 @@ interface TableWithActionsProps {
 }
 
 const TableWithActions: React.FC<TableWithActionsProps> = ({ data, invoiceDetails, invoiceSummary, options }) => {
+    console.log("🚀 ~ invoiceDetails:", invoiceDetails)
     const router = useRouter()
-    const [userIdSelected, setUserIdSelected] = useState<number | undefined>();
-    const [dateTime, setDateTime] = useState<dayjs.Dayjs | null | undefined>(dayjs());
+    const hasPermission = useAuthStore(state => state.hasPermission);
+    const setShouldReload = useInvoiceStore(state => state.setShouldReload);
+    const { warehouseId } = useAuthStore((state) => state.user)
 
     const columns: ColumnsType<Partial<IInvoiceTableData>> = [
         { title: 'Mã hàng', dataIndex: 'product_code', key: 'product_code' },
@@ -38,44 +43,27 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ data, invoiceDetail
     ];
 
     const handleConfirmOk = async () => {
-        await updateInvoice(invoiceDetails.invoice_id ?? 0, { status: InvoiceStatus.CANCELLED })
+        await cancelInvoice(invoiceDetails.invoice_id as number);
     };
 
     const handleCopyClick = () => {
-        window.open(`/transactions/invoices/copy-invoice/${invoiceDetails.invoice_id}`, '_blank');
-        // router.push(`/transactions/invoices/copy-invoice/${invoiceDetails.invoice_id}`);
+        window.open(`/transactions/invoices/copy-invoice/${invoiceDetails.invoice_id}/${invoiceDetails.invoice_code}`, '_blank');
     }
 
     const handleEditClick = () => {
-        window.open(`/transactions/invoices/edit/${invoiceDetails.invoice_id}`, '_blank');
+        window.open(`/transactions/invoices/edit/${invoiceDetails.invoice_id}/${invoiceDetails.invoice_code}`, '_blank');
     }
-
-    useEffect(() => {
-        setUserIdSelected(invoiceDetails.user_id)
-        setDateTime(dayjs(invoiceDetails.invoice_date))
-    }, [invoiceDetails])
 
     return (
         <div>
             <Row gutter={24} style={{ marginBottom: 12 }}>
-                <Col span={6}>
+                <Col xs={24} md={12} xl={10} xxl={6}>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Mã hoá đơn:</Text></Col>
                         <Col><Text>{invoiceDetails?.invoice_code}</Text></Col>
                     </Row>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Thời gian:</Text></Col>
-                        {/* <Col>
-                            <DatePicker
-                                showTime={{ format: 'HH:mm' }}
-                                format="DD/MM/YYYY HH:mm"
-                                value={dateTime}
-                                onChange={(value) => setDateTime(value)}
-                                allowClear={false}
-                                size="small"
-                                variant="outlined"
-                            />
-                        </Col> */}
                         <Col><Text>{dayjs(invoiceDetails.invoice_date).format('DD/MM/YYYY HH:mm')}</Text></Col>
                     </Row>
                     <Row style={{ marginBottom: 8 }}>
@@ -84,27 +72,19 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ data, invoiceDetail
                     </Row>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Người tạo:</Text></Col>
-                        {/* <Col>
-                            <SelectWithButton
-                                options={options}
-                                size='small'
-                                placeholder="người tạo"
-                                value={userIdSelected} // <-- dùng state
-                                onChange={(value) => setUserIdSelected(Number(value))}
-                                allowClear={false}
-                                notFoundContent={
-                                    <Empty
-                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                        description="Không có kết quả phù hợp"
-                                    />
-                                }
-                            />
-                        </Col> */}
                         <Col><Text>{invoiceDetails.created_by}</Text></Col>
                     </Row>
+                    {
+                        invoiceDetails.return_code && (
+                            <Row style={{ marginBottom: 8 }}>
+                                <Col span={8}><Text strong>Phiếu trả hàng:</Text></Col>
+                                <Col><Text copyable>{invoiceDetails.return_code}</Text></Col>
+                            </Row>
+                        )
+                    }
                 </Col>
 
-                <Col span={6}>
+                <Col xs={24} md={12} xl={8} xxl={6}>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Trạng thái:</Text></Col>
                         <Col><Text>{getInvoiceStatusLabel(invoiceDetails.status as InvoiceStatus)}</Text></Col>
@@ -114,8 +94,9 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ data, invoiceDetail
                         <Col><Text>{invoiceDetails.warehouse_name}</Text></Col>
                     </Row>
                 </Col>
-                <Col span={8} style={{ height: '100%' }}>
-                    <Text type="secondary" italic>Ghi chú...</Text>
+                <Col xs={24} md={24} xl={6} xxl={8} style={{ height: '100%' }}>
+                    <Text strong italic style={{ paddingRight: 8 }}>Ghi chú:</Text>
+                    <Text>{invoiceDetails.notes}</Text>
                 </Col>
             </Row>
 
@@ -128,7 +109,7 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ data, invoiceDetail
             />
 
             <Row gutter={24} justify={"end"} align={"top"} style={{ marginTop: 12 }}>
-                <Col span={6}>
+                <Col xs={12} xl={8} xxl={6}>
                     <Row style={{ marginBottom: 8 }}>
                         <Col span={8}><Text strong>Tổng số lượng</Text></Col>
                         <Col span={16} style={{ textAlign: "end" }}><Text>{invoiceSummary?.total_quantity}</Text></Col>
@@ -138,7 +119,7 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ data, invoiceDetail
                         <Col span={16} style={{ textAlign: "end" }}><Text>{invoiceSummary?.total_items}</Text></Col>
                     </Row>
                     <Row style={{ marginBottom: 8 }}>
-                        <Col span={8}><Text strong>Tổng tiền hàng</Text></Col>
+                        <Col span={8}><Text strong>Tổng thành tiền</Text></Col>
                         <Col span={16} style={{ textAlign: "end" }}><Text>{Number(invoiceSummary?.subtotal)?.toLocaleString()}</Text></Col>
                     </Row>
                     <Row style={{ marginBottom: 8 }}>
@@ -149,84 +130,89 @@ const TableWithActions: React.FC<TableWithActionsProps> = ({ data, invoiceDetail
                         <Col span={8}><Text strong>Tổng cộng</Text></Col>
                         <Col span={16} style={{ textAlign: "end" }}>{Number(invoiceSummary?.total_amount)?.toLocaleString()}</Col>
                     </Row>
-                    <Row style={{ marginBottom: 8 }}>
-                        <Col span={8}><Text strong>Khách đã trả</Text></Col>
-                        <Col span={16} style={{ textAlign: "end" }}><Text>{Number(invoiceSummary?.amount_paid)?.toLocaleString()}</Text></Col>
-                    </Row>
-                    <Row style={{ marginBottom: 8 }}>
-                        <Col span={8}><Text strong>Nợ</Text></Col>
-                        <Col span={16} style={{ textAlign: "end" }}><Text>{Number(invoiceSummary?.debt_amount)?.toLocaleString()}</Text></Col>
-                    </Row>
                 </Col>
             </Row>
 
-            <Row justify="end" align="middle" style={{ marginTop: 16 }}>
-                <Col>
-                    <Space>
-                        {
-                            invoiceDetails.status === InvoiceStatus.RECEIVED && (
-                                <ActionButton
-                                    type='primary'
-                                    label='Trả hàng'
-                                    color='green'
-                                    variant='solid'
-                                    icon={<CheckCircleOutlined />}
-                                    onClick={() => {
-                                        router.push(`/transactions/returns/create/${invoiceDetails.invoice_id}`);
-                                    }}
-                                />
-                            )
-                        }
-                        {
-                            invoiceDetails.status !== InvoiceStatus.CANCELLED && (
-                                <>
-                                    <ActionButton
-                                        type='primary'
-                                        label='Cập nhật'
-                                        color='green'
-                                        variant='solid'
-                                        icon={<CheckCircleFilled />}
-                                        onClick={handleEditClick}
-                                    />
-                                    <ActionButton
-                                        type='primary'
-                                        label='Sao chép'
-                                        color='green'
-                                        variant='solid'
-                                        icon={<CopyOutlined />}
-                                        onClick={handleCopyClick}
-                                    />
-                                </>
-                            )
-                        }
-                        {
-                            invoiceDetails.status === InvoiceStatus.RECEIVED && (
-                                <>
-                                    <PrintInvoiceWrapper data={data} invoiceDetails={invoiceDetails} invoiceSummary={invoiceSummary} />
-                                    <ActionButton
-                                        type='primary'
-                                        label='Xuất file'
-                                        color='orange'
-                                        variant='solid'
-                                        icon={<DownloadOutlined />}
-                                    />
-                                    <ConfirmButton
-                                        label="Huỷ bỏ"
-                                        customColor="red"
-                                        icon={<CloseCircleFilled />}
-                                        onConfirm={() => {
-                                            handleConfirmOk()
-                                        }}
-                                        confirmMessage="Bạn có chắc chắn muốn huỷ hoá đơn này? Hành động này sẽ không thể hoàn tác."
-                                        messageWhenSuccess="Huỷ phiếu thành công"
-                                        messageWhenError="Có lỗi xảy ra khi huỷ phiếu"
-                                    />
-                                </>
-                            )
-                        }
-                    </Space>
-                </Col>
-            </Row>
+            {
+                invoiceDetails.status !== InvoiceStatus.CANCELLED && (
+                    <Row justify="end" align="middle" style={{ marginTop: 16 }}>
+                        <Col>
+                            <Space>
+                                {
+                                    hasPermission(PermissionKey.RETURN_PROCESS) && (
+                                        <ActionButton
+                                            type='primary'
+                                            label='Trả hàng'
+                                            color='green'
+                                            variant='solid'
+                                            icon={<CheckCircleOutlined />}
+                                            onClick={() => {
+                                                router.push(`/transactions/returns/create/${invoiceDetails.invoice_id}`);
+                                            }}
+                                        />
+                                    )
+                                }
+                                {
+                                    hasPermission(PermissionKey.INVOICE_EDIT) && (
+                                        <ActionButton
+                                            type='primary'
+                                            label='Cập nhật'
+                                            color='green'
+                                            variant='solid'
+                                            icon={<CheckCircleFilled />}
+                                            onClick={handleEditClick}
+                                        />
+                                    )
+                                }
+                                {
+                                    hasPermission(PermissionKey.INVOICE_CREATE) && (
+                                        <ActionButton
+                                            type='primary'
+                                            label='Sao chép'
+                                            color='green'
+                                            variant='solid'
+                                            icon={<CopyOutlined />}
+                                            onClick={handleCopyClick}
+                                        />
+                                    )
+                                }
+                                {
+                                    hasPermission(PermissionKey.INVOICE_PRINT) && (
+                                        <PrintInvoiceWrapper data={data} invoiceDetails={invoiceDetails} invoiceSummary={invoiceSummary} />
+                                    )
+                                }
+                                {
+                                    hasPermission(PermissionKey.INVOICE_EXPORT) && (
+                                        <GenericExportButton
+                                            exportService={exportInvoices}
+                                            serviceParams={[[invoiceDetails.invoice_id], warehouseId]}
+                                            fileNamePrefix={`hoa_don_${invoiceDetails.invoice_code}`}
+                                            buttonProps={{
+                                                color: 'orange',
+                                                variant: 'solid',
+                                            }}
+                                        />
+                                    )
+                                }
+                                {
+                                    hasPermission(PermissionKey.INVOICE_VOID) && (
+                                        <ConfirmButton
+                                            label="Huỷ bỏ"
+                                            customColor="red"
+                                            icon={<CloseCircleFilled />}
+                                            onConfirm={() => handleConfirmOk()}
+                                            confirmMessage="Bạn có chắc chắn muốn huỷ hoá đơn này? Hành động này sẽ không thể hoàn tác."
+                                            messageWhenSuccess="Huỷ phiếu thành công"
+                                            messageWhenError="Có lỗi xảy ra khi huỷ phiếu"
+                                            setShouldReload={setShouldReload}
+                                        />
+                                    )
+                                }
+                            </Space>
+                        </Col>
+                    </Row>
+                )
+            }
         </div>
     );
 };

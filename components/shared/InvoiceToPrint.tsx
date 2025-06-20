@@ -5,15 +5,18 @@ import { IInvoiceDetail, IInvoiceTableData } from '@/types/invoice';
 
 const { Text, Title } = Typography;
 
+type printMode = 'full' | 'simple' | 'shortening';
+
 // Sửa lại prop nhận vào cho InvoiceToPrint
 interface TableWithActionsProps {
     data: Partial<IInvoiceTableData>[]; // Dữ liệu bảng
     invoiceDetails: Partial<IInvoiceDetail>;
     invoiceSummary: any;
-    printMode?: 'full' | 'simple';
+    printMode: printMode;
+    sizePrint: string
 }
 
-const InvoiceToPrint: React.FC<TableWithActionsProps> = ({ data, invoiceDetails, invoiceSummary, printMode }) => {
+const InvoiceToPrint: React.FC<TableWithActionsProps> = ({ data, invoiceDetails, invoiceSummary, printMode, sizePrint }) => {
     const numberToWords = (num: number): string => {
         if (num === 0) return 'không đồng';
 
@@ -57,30 +60,54 @@ const InvoiceToPrint: React.FC<TableWithActionsProps> = ({ data, invoiceDetails,
 
         return result.trim() + ' đồng';
     };
+
+    const changeNameInvoice = (printMode: printMode) => {
+        switch (printMode) {
+            case 'full':
+                return 'Hoá đơn tính tiền';
+            case 'simple':
+                return 'Phiếu giao hàng';
+            case 'shortening':
+                return 'Phiếu giao hàng';
+            default:
+                return 'Hoá đơn tính tiền';
+        }
+    }
+
     return (
-        <div style={{ padding: 16, maxWidth: 400, margin: '0 auto' }}>
-            <Title level={4} style={{ textAlign: 'center', marginBottom: 8, textTransform: 'uppercase' }}>
-                {invoiceDetails.warehouse_name}
+        // <div style={{ padding: 16, maxWidth: 400, margin: '0 auto' }}>
+        <div
+            style={{
+                width: sizePrint, // ~ tương đương khổ K80
+                padding: 8,
+                fontSize: 12,
+                fontFamily: 'Arial, sans-serif',
+                margin: '0 auto',
+                lineHeight: 1.4,
+            }}
+        >
+            {
+                printMode !== 'shortening' && (
+                    <>
+                        <Title level={4} style={{ textAlign: 'center', marginBottom: 8, textTransform: 'uppercase' }}>
+                            {invoiceDetails.warehouse_name}
+                        </Title>
+                        <Text style={{ display: 'block', textAlign: 'center', marginBottom: 8 }}>
+                            Địa chỉ: {invoiceDetails.warehouse_address}
+                        </Text>
+                        <Text style={{ display: 'block', textAlign: 'center', marginBottom: 16 }}>
+                            Điện thoại:
+                        </Text>
+                    </>
+                )
+            }
+            <Title level={3} style={{ textAlign: 'center', marginBottom: 4, textTransform: 'uppercase' }}>
+                {changeNameInvoice(printMode)}
             </Title>
-            <Text style={{ display: 'block', textAlign: 'center', marginBottom: 8 }}>
-                Địa chỉ: {invoiceDetails.warehouse_address}
-            </Text>
-            <Text style={{ display: 'block', textAlign: 'center', marginBottom: 16 }}>
-                Điện thoại:
-            </Text>
-
-            <Title level={3} style={{ textAlign: 'center', marginBottom: 16 }}>
-                HÓA ĐƠN BÁN HÀNG
-            </Title>
-
-            <Row justify="space-between" style={{ marginBottom: 8 }}>
-                <Col>
-                    <Text>Số HD: {invoiceDetails?.invoice_code}</Text>
-                </Col>
-                <Col>
-                    <Text>Ngày: {dayjs(invoiceDetails.created_at).format('DD/MM/YYYY HH:mm:ss')}</Text>
-                </Col>
-            </Row>
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 4, marginBottom: 16 }}>
+                <Text>Số HD: {invoiceDetails?.invoice_code}</Text>
+                <Text>Ngày: {dayjs(invoiceDetails.created_at).format('DD/MM/YYYY HH:mm:ss')}</Text>
+            </div>
             <div style={{ marginBottom: 16 }}>
                 <Text strong>Khách hàng:</Text> {invoiceDetails.customer_name}
                 <br />
@@ -93,87 +120,101 @@ const InvoiceToPrint: React.FC<TableWithActionsProps> = ({ data, invoiceDetails,
 
             <Divider style={{ margin: '12px 0', borderTop: '1px dashed #000' }} />
 
-            <table style={{ width: '100%', marginBottom: 16, borderCollapse: 'collapse' }}>
-                <thead>
-                    <tr>
-                        <th style={{ textAlign: 'left', borderBottom: '1px dashed #000', padding: '4px 0' }}>Đơn giá</th>
-                        <th style={{ textAlign: 'center', borderBottom: '1px dashed #000', padding: '4px 0' }}>SL</th>
-                        <th style={{ textAlign: 'right', borderBottom: '1px dashed #000', padding: '4px 0' }}>Thành tiền</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {data.map((item, index) => (
-                        <React.Fragment key={index}>
-                            <tr>
-                                <td colSpan={3} style={{ padding: '4px 0' }}>{item.product_name}</td>
-                            </tr>
-                            <tr>
-                                <td style={{ textAlign: 'left', padding: '4px 0' }}>{Number(item.unit_price).toLocaleString()}</td>
-                                <td style={{ textAlign: 'center', padding: '4px 0' }}>{item.quantity}</td>
-                                <td style={{ textAlign: 'right', padding: '4px 0' }}>{(Number(item.unit_price) * (item.quantity ?? 0)).toLocaleString()}</td>
-                            </tr>
-                        </React.Fragment>
-                    ))}
-                </tbody>
-            </table>
 
+            {
+                printMode === 'full' ? (
+                    <table style={{ width: '100%', marginBottom: 16, borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                <th style={{ textAlign: 'left', borderBottom: '1px dashed #000', padding: '4px 0' }}>Đơn giá</th>
+                                <th style={{ textAlign: 'center', borderBottom: '1px dashed #000', padding: '4px 0' }}>SL</th>
+                                <th style={{ textAlign: 'right', borderBottom: '1px dashed #000', padding: '4px 0' }}>Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.map((item, index) => (
+                                <React.Fragment key={index}>
+                                    <tr>
+                                        <td colSpan={3} style={{ padding: '4px 0' }}>{item.product_name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style={{ textAlign: 'left', padding: '4px 0' }}>{Number(item.unit_price).toLocaleString()}</td>
+                                        <td style={{ textAlign: 'center', padding: '4px 0' }}>{item.quantity}</td>
+                                        <td style={{ textAlign: 'right', padding: '4px 0' }}>{(Number(item.unit_price) * (item.quantity ?? 0)).toLocaleString()}</td>
+                                    </tr>
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <table style={{ width: '100%', marginBottom: 16, borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                <th colSpan={3} style={{ textAlign: 'left', borderBottom: '1px dashed #000', padding: '4px 0' }}>Tên sản phẩm</th>
+                                <th style={{ borderBottom: '1px dashed #000', padding: '4px 0', textAlign: 'right' }}>Số lượng</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {data.map((item, index) => (
+                                <React.Fragment key={index}>
+                                    <tr>
+                                        <td colSpan={3} style={{ padding: '4px 0' }}>{item.product_name}</td>
+                                        <td style={{ padding: '4px 0', textAlign: 'right' }}>{item.quantity}</td>
+                                    </tr>
+                                </React.Fragment>
+                            ))}
+                        </tbody>
+                    </table>
+                )
+            }
             <Divider style={{ margin: '12px 0', borderTop: '1px dashed #000' }} />
-            {printMode === 'full' && (
-                <div>
-                    <Row justify="space-between" style={{ marginBottom: 8, paddingLeft: 130 }}>
-                        <Col>
-                            <Text strong>Tổng tiền hàng:</Text>
-                        </Col>
-                        <Col>
-                            <Text strong>{invoiceSummary?.total_amount?.toLocaleString()}</Text>
-                        </Col>
-                    </Row>
+            {
+                printMode === 'full' && (
+                    <div>
+                        <Row justify="space-between" style={{ marginBottom: 8, paddingLeft: 130 }}>
+                            <Col>
+                                <Text strong>Tổng tiền hàng:</Text>
+                            </Col>
+                            <Col>
+                                <Text strong>{Number(invoiceSummary?.subtotal)?.toLocaleString()}</Text>
+                            </Col>
+                        </Row>
 
-                    <Row justify="space-between" style={{ marginBottom: 8, paddingLeft: 130 }}>
-                        <Col>
-                            <Text strong>Chiết khấu:</Text>
-                        </Col>
-                        <Col>
-                            <Text strong>{invoiceSummary?.total_discount?.toLocaleString()}</Text>
-                        </Col>
-                    </Row>
+                        <Row justify="space-between" style={{ marginBottom: 8, paddingLeft: 130 }}>
+                            <Col>
+                                <Text strong>Chiết khấu:</Text>
+                            </Col>
+                            <Col>
+                                <Text strong>{Number(invoiceSummary?.discount_amount)?.toLocaleString()}</Text>
+                            </Col>
+                        </Row>
+                        <Row justify="space-between" style={{ marginBottom: 8, paddingLeft: 130 }}>
+                            <Col>
+                                <Text strong>VAT (0%):</Text>
+                            </Col>
+                            <Col>
+                                <Text strong>{Number(invoiceSummary?.discount_amount)?.toLocaleString()}</Text>
+                            </Col>
+                        </Row>
 
-                    <Row justify="space-between" style={{ marginBottom: 16, paddingLeft: 130 }}>
-                        <Col>
-                            <Text strong>Tổng thanh toán:</Text>
-                        </Col>
-                        <Col>
-                            <Text strong>{invoiceSummary?.total_amount?.toLocaleString()}</Text>
-                        </Col>
-                    </Row>
-
-                    {/* <Row justify="space-between" style={{ marginBottom: 16, paddingLeft: 130 }}>
-                <Col>
-                    <Text strong>Khách đã trả:</Text>
-                </Col>
-                <Col>
-                    <Text strong>{invoiceSummary?.total_amount?.toLocaleString()}</Text>
-                </Col>
-            </Row>
-
-            <Row justify="space-between" style={{ marginBottom: 16, paddingLeft: 130 }}>
-                <Col>
-                    <Text strong>Tiền thừa</Text>
-                </Col>
-                <Col>
-                    <Text strong>{invoiceSummary?.total_amount?.toLocaleString()}</Text>
-                </Col>
-            </Row> */}
-
-                    <Text style={{ fontStyle: 'italic', display: 'block', textAlign: 'right' }}>
-                        ({numberToWords(invoiceSummary?.total_amount ?? 0)})
-                    </Text>
-                </div>
-            )}
+                        <Row justify="space-between" style={{ marginBottom: 16, paddingLeft: 130 }}>
+                            <Col>
+                                <Text strong>Tổng thanh toán:</Text>
+                            </Col>
+                            <Col>
+                                <Text strong>{Number(invoiceSummary?.total_amount)?.toLocaleString()}</Text>
+                            </Col>
+                        </Row>
+                        <Text style={{ fontStyle: 'italic', display: 'block', textAlign: 'right' }}>
+                            ({numberToWords(invoiceSummary?.total_amount ?? 0)})
+                        </Text>
+                    </div>
+                )
+            }
             <Text style={{ display: 'block', textAlign: 'center', marginTop: 24, fontStyle: 'italic' }}>
                 Cảm ơn và hẹn gặp lại!
             </Text>
-        </div>
+        </div >
     );
 };
 

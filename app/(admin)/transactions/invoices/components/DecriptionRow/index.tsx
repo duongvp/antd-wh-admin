@@ -1,9 +1,9 @@
 import React from 'react';
-import { Tabs, Spin, Alert } from 'antd';
+import { Tabs, Alert } from 'antd';
 import TableWithActions from './TableWithActions';
 import { InvoiceApiResponse } from '@/services/invoiceService';
 import { useInvoiceTableData } from '@/hooks/useInvoiceTableData';
-import { useAuthStore } from '@/stores/authStore';
+import useInvoiceStore from '@/stores/invoiceStore';
 
 interface DecriptionTableProps {
     data: InvoiceApiResponse;
@@ -15,17 +15,16 @@ interface DecriptionTableProps {
 }
 
 const InvoiceDescriptionTable: React.FC<DecriptionTableProps> = ({ data, options }) => {
+    const shouldReload = useInvoiceStore(state => state.shouldReload);
     const {
         tableData,
         invoiceDetails,
         invoiceSummary,
         loading,
         error,
-    } = useInvoiceTableData(data.invoice_id);
-    const { warehouseId } = useAuthStore(state => state.user)
+    } = useInvoiceTableData(data.invoice_id, [shouldReload]);
 
-    if (!data) return null;
-    // if (loading) return <Spin tip="Đang tải dữ liệu..." fullscreen />;
+    if (loading) return <></>
     if (error) return <Alert type="error" message={error} />;
 
     const tabItems = [

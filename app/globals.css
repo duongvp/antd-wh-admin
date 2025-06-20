@@ -95,3 +95,92 @@ body {
   padding: 0; /* bỏ padding nếu cần */
   width: 18ch; /* hoặc dùng auto nếu bạn muốn co theo nội dung */
 }
+
+.login-form {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0 auto;
+  z-index: 2;
+}
+
+@media only screen and (max-width: 600px) {
+  .login-form {
+    left: 5%;
+    right: 5%;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+}
+
+/* Hide elements on extra small screens */
+.hidden-xs {
+  display: inline;
+}
+
+@media (max-width: 575px) {
+  .hidden-xs {
+    display: none;
+  }
+
+  /* Make buttons more compact on mobile */
+  .ant-btn {
+    padding: 0 8px;
+  }
+}
+
+/* bill-tabs */
+.bill-tabs .ant-tabs-content.ant-tabs-content-top {
+  min-height: 100% !important;
+  position: relative;
+}
+
+.ant-tabs,
+.ant-tabs-content,
+.ant-tabs-tabpane-active {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.bill-tabs .ant-tabs-content-holder {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.site-layout-background {
+  margin: 12px 0;
+  padding: 12px;
+}
+
+@media (min-width: 576px) {
+  .container {
+    max-width: 540px;
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) {
+  .container {
+    max-width: 720px;
+  }
+}
+
+/* Large devices (desktops, 992px and up) */
+@media (min-width: 992px) {
+  .container {
+    max-width: 960px;
+  }
+}
+
+/* Extra large devices (large desktops, 1200px and up) */
+@media (min-width: 1200px) {
+  .site-layout-background {
+    margin: 24px 16px;
+    padding: 24px;
+  }
+}

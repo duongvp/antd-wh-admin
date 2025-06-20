@@ -14,7 +14,7 @@ export interface IInvoiceItem {
     product_name: string;
 }
 
-export type ITypeImportInvoice = 'edit' | 'create' | 'copy ' | null;
+export type ITypeImportInvoice = 'edit' | 'create' | 'copy' | null;
 
 export interface IInvoiceTableData {
     key: number;
@@ -51,4 +51,5 @@ export interface IInvoiceDetail {
     user_phone: string;
     warehouse_name: string;
     warehouse_address: string;
+    return_code: string
 }

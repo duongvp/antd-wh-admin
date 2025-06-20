@@ -5,11 +5,10 @@ import { useState } from 'react';
 
 interface GenericExportButtonProps<T extends any[]> {
     exportService: (...args: T) => Promise<Blob>;
-    serviceParams: T;
+    serviceParams?: T;
     fileNamePrefix?: string;
     buttonText?: string;
     buttonProps?: import('antd').ButtonProps;
-    disabledText?: string;
 }
 
 const GenericExportButton = <T extends any[]>({
@@ -18,21 +17,11 @@ const GenericExportButton = <T extends any[]>({
     fileNamePrefix = 'export',
     buttonText = 'Xuất Excel',
     buttonProps = {},
-    disabledText = 'Vui lòng chọn ít nhất một mục',
 }: GenericExportButtonProps<T>) => {
     const [loading, setLoading] = useState(false);
     const [api, contextHolder] = notification.useNotification();
 
     const handleExport = async () => {
-        if (!serviceParams || serviceParams.length === 0) {
-            api.warning({
-                message: 'Thông báo',
-                description: disabledText,
-                placement: 'bottomRight',
-            });
-            return;
-        }
-
         const key = `export-${Date.now()}`;
         const filename = `${fileNamePrefix}_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
@@ -47,7 +36,7 @@ const GenericExportButton = <T extends any[]>({
         setLoading(true);
 
         try {
-            const blob = await exportService(...serviceParams);
+            const blob = await exportService(...(serviceParams ?? ([] as unknown as T)));
 
             // Tạo URL và xử lý download
             const url = window.URL.createObjectURL(blob);
@@ -101,7 +90,6 @@ const GenericExportButton = <T extends any[]>({
                 icon={<DownloadOutlined />}
                 onClick={handleExport}
                 loading={loading}
-                disabled={!serviceParams || serviceParams.length === 0}
                 {...buttonProps}
             >
                 {buttonText}

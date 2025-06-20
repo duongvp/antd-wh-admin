@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { CloseCircleOutlined, SaveOutlined } from '@ant-design/icons';
 import CustomSpin from '@/components/ui/Spins';
 import { showErrorMessage, showSuccessMessage } from '@/ultils/message';
-import AreaWardSelector from '@/components/templates/AreaWardSelector';
 import useCustomerStore from '@/stores/customerStore';
+import { createCustomer, updateCustomer } from '@/services/customerService';
+import { ActionType } from '@/enums/action';
 
 const formItemLayout = {
     labelCol: { span: 6 },
@@ -14,7 +15,7 @@ const formItemLayout = {
 
 const CustomerModal = () => {
     const [form] = Form.useForm();
-    const { modal, resetModal } = useCustomerStore();
+    const { modal, resetModal, setShouldReload } = useCustomerStore();
     const [loadingModalVisible, setLoadingModalVisible] = useState(false);
 
     const onCloseModal = () => {
@@ -22,31 +23,43 @@ const CustomerModal = () => {
         resetModal()
     }
 
-    const handleFormSubmit = async (values: any) => {
+    const handleFormSubmit = async () => {
         try {
+            const rawValues = form.getFieldsValue();
+            const values = Object.fromEntries(
+                Object.entries(rawValues).map(([key, value]) => {
+                    if (typeof value === 'string') {
+                        return [key, value.trim()];
+                    }
+                    return [key, value];
+                })
+            );
+
             setLoadingModalVisible(true);
-            // await createCategory(values);
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+
+            if (modal.type === ActionType.CREATE) {
+                await createCustomer(values);
+            } else if (modal.type === ActionType.UPDATE) {
+                await updateCustomer(modal.customer?.customer_id || 0, values);
+            }
 
             form.resetFields();
+            setShouldReload(true);
             onCloseModal();
             showSuccessMessage(`${modal.title} thành công!`);
-        } catch (error) {
-            console.error('Lỗi submit:', error);
-            showErrorMessage(`${modal.title} thất bại!`);
+        } catch (error: Error | any) {
+            error.message ? showErrorMessage(error.message) : showErrorMessage(`${modal.title} thất bại!`);
         } finally {
             setLoadingModalVisible(false);
         }
     };
 
+
     useEffect(() => {
         if (modal.open) {
             form.setFieldsValue({
                 ...modal.customer,
-                area: 'Thành phố Hà Nội - Quận Hoàn Kiếm',
-                ward: 'Phường Đồng Xuân',
             });
-
         }
     }, [modal.open]);
 
@@ -65,7 +78,7 @@ const CustomerModal = () => {
                     <Button
                         key="submit"
                         type="primary"
-                        onClick={() => form.submit()}
+                        onClick={handleFormSubmit}
                         icon={<SaveOutlined />}
                     >
                         Lưu
@@ -82,16 +95,33 @@ const CustomerModal = () => {
                     <Form.Item label="Mã khách hàng" name="customer_code">
                         <Input placeholder="Mã mặc định" />
                     </Form.Item>
-                    <Form.Item label="Tên khách hàng" name="customer_name">
+                    <Form.Item label="Tên khách hàng" name="customer_name" rules={[{ required: true, message: 'Vui lòng nhập tên khách hàng!' }]}>
                         <Input />
                     </Form.Item>
-                    <Form.Item label="Điện thoại" name="phone">
+                    <Form.Item label="Điện thoại" name="phone" rules={[
+                        { required: true, message: 'Vui lòng nhập số điện thoại khách hàng!' },
+                        {
+                            validator: (_, value) => {
+                                if (!value) return Promise.resolve();
+
+                                // Nếu thiếu số 0 đầu, tự thêm vào để kiểm tra định dạng
+                                const normalized = value.startsWith('0') ? value : '0' + value;
+
+                                const vietnamPhoneRegex = /^0(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-5]|9[0-9])[0-9]{7}$/;
+
+                                if (vietnamPhoneRegex.test(normalized)) {
+                                    return Promise.resolve();
+                                } else {
+                                    return Promise.reject('Số điện thoại không hợp lệ!');
+                                }
+                            },
+                        },
+                    ]}>
                         <Input />
                     </Form.Item>
                     <Form.Item label="Địa chỉ" name="address">
                         <Input />
                     </Form.Item>
-                    <AreaWardSelector form={form} />
                 </Form>
             </Modal>
         </>

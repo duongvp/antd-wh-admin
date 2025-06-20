@@ -2,9 +2,10 @@
 import { useEffect, useState } from 'react';
 import { debounce } from 'lodash';
 import { getProductsByPage, ProductApiResponse } from '@/services/productService';
-import { Avatar, Image, Tag } from 'antd';
+import { Image, Tag } from 'antd';
 import { WarningOutlined } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/authStore';
+import useProductStore from '@/stores/productStore';
 
 const LIMIT = 50; // Số lượng sản phẩm mỗi lần gọi API
 
@@ -22,6 +23,7 @@ export default function useProductSelect(searchTerm: string, isViewPurchasePrice
     const [hasMore, setHasMore] = useState(true);
     const [options, setOptions] = useState<ProductOption[]>([]);
     const { warehouseId } = useAuthStore((state) => state.user)
+    const { shouldReload, setShouldReload } = useProductStore()
 
     const fetchProducts = async (skip: number, filter: any = {}) => {
         setLoading(true);
@@ -107,6 +109,16 @@ export default function useProductSelect(searchTerm: string, isViewPurchasePrice
             setOptions([]);
         }
     }, [data]);
+
+    useEffect(() => {
+        const handleApiResponse = async () => {
+            if (shouldReload) {
+                fetchProducts(0, { search: searchTerm });
+                setShouldReload(false);
+            }
+        }
+        handleApiResponse();
+    }, [shouldReload])
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;

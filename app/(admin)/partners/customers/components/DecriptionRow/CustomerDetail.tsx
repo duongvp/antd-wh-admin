@@ -3,10 +3,12 @@
 import React from 'react';
 import { Row, Col, Typography, Space, Button } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
-import { CustomerApiResponse } from '@/services/customerService';
+import { CustomerApiResponse, deleteCustomer, toggleCustomerStatus } from '@/services/customerService';
 import useCustomerStore from '@/stores/customerStore';
 import { ActionType } from '@/enums/action';
 import BtnDeActiveDetete from '@/components/shared/BtnDeActiveDetete';
+import { PermissionKey } from '@/types/permissions';
+import { useAuthStore } from '@/stores/authStore';
 
 const { Text } = Typography;
 
@@ -16,6 +18,7 @@ interface SupplierDetailProps {
 
 const CustomerDetail: React.FC<SupplierDetailProps> = ({ record }) => {
     const { setModal, setShouldReload } = useCustomerStore();
+    const { hasPermission } = useAuthStore();
 
     const handleUpdate = () => {
         setModal({
@@ -31,8 +34,6 @@ const CustomerDetail: React.FC<SupplierDetailProps> = ({ record }) => {
         { label: 'Số điện thoại:', value: record.phone },
         { label: 'Email:', value: record.email },
         { label: 'Địa chỉ:', value: record.address },
-        { label: 'Khu vực:', value: record.area },
-        { label: 'Phường xã:', value: record.ward },
     ];
 
     return (
@@ -57,23 +58,30 @@ const CustomerDetail: React.FC<SupplierDetailProps> = ({ record }) => {
             <Row justify="end" align="middle" style={{ marginTop: 16 }}>
                 <Col>
                     <Space>
-                        <Button
-                            type="primary"
-                            icon={<UploadOutlined />}
-                            onClick={handleUpdate}
-                        >
-                            Cập nhật
-                        </Button>
-
-                        <BtnDeActiveDetete
-                            record={{ id: record.customer_id, ...record }}
-                            contextActive='Ban có chắc muốn hoạt động lại khách hàng này không?'
-                            contextDeactive='Bạn có chắc chắn muốn ngừng hoạt động khách hàng này?'
-                            contextDelete='Bạn có chắc chắn muốn xoá khách hàng này? Hành động này sẽ không thể hoàn tác.'
-                            toggleStatus={async () => { }}
-                            onDelete={async () => { }}
-                            setShouldReload={setShouldReload}
-                        />
+                        {
+                            hasPermission(PermissionKey.CUSTOMER_EDIT) && (
+                                <Button
+                                    type="primary"
+                                    icon={<UploadOutlined />}
+                                    onClick={handleUpdate}
+                                >
+                                    Cập nhật
+                                </Button>
+                            )
+                        }
+                        {
+                            hasPermission(PermissionKey.CUSTOMER_DELETE) && (
+                                <BtnDeActiveDetete
+                                    record={{ id: record.customer_id, ...record }}
+                                    contextActive='Ban có chắc muốn hoạt động lại khách hàng này không?'
+                                    contextDeactive='Bạn có chắc chắn muốn ngừng hoạt động khách hàng này?'
+                                    contextDelete='Bạn có chắc chắn muốn xoá khách hàng này? Hành động này sẽ không thể hoàn tác.'
+                                    toggleStatus={toggleCustomerStatus}
+                                    onDelete={deleteCustomer}
+                                    setShouldReload={setShouldReload}
+                                />
+                            )
+                        }
                     </Space>
                 </Col>
             </Row>

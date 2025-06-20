@@ -11,6 +11,8 @@ import DecriptionRow from "./components/DecriptionRow";
 import RoleModal from "../member-roles/components/RoleModal";
 import { ActionType } from "@/enums/action";
 import BranchModal from "../branches/components/BranchModal";
+import { useAuthStore } from "@/stores/authStore";
+import { PermissionKey } from "@/types/permissions";
 
 
 // Đây là kiểu dữ liệu cho Table (thêm key + description)
@@ -53,6 +55,7 @@ const Page = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [expandedRowKeys, setExpandedRowKeys] = useState<React.Key[]>([]);
     const { shouldReload, setModal, setShouldReload } = useUserStore();
+    const hasPermission = useAuthStore(state => state.hasPermission);
 
     const fetchUsers = async () => {
         try {
@@ -82,6 +85,10 @@ const Page = () => {
         );
     };
 
+    const handleAddBtn = () => {
+        setModal({ open: true, type: ActionType.CREATE, user: null });
+    };
+
     useEffect(() => {
         fetchUsers();
     }, []);
@@ -99,9 +106,8 @@ const Page = () => {
                 placeholder="Tên đăng nhập, người dùng"
                 titleBtnAdd="Người dùng"
                 onSearch={async (value) => console.log(value)}
-                handleAddBtn={() => setModal({ open: true, type: ActionType.CREATE, user: null })}
+                handleAddBtn={hasPermission(PermissionKey.USER_CREATE) ? handleAddBtn : undefined}
             />
-            {/* <SearchAndActionsBar /> */}
             <CustomTable<DataType>
                 columns={columns}
                 dataSource={data}

@@ -9,11 +9,11 @@ import SearchAndActionsBar from "@/components/shared/SearchAndActionBar";
 import ProductModal from "./components/Modal/ProductModal";
 import FilterProductDrawer from "./components/FilterProductDrawer";
 import ImportProductModal from "./components/Modal/ImportProductModal";
-import ExportModal from "@/components/shared/ExportModal";
 import GenericExportButton from "@/components/shared/GenericExportButton";
 import useProductStore from "@/stores/productStore";
 import { ActionType } from "@/enums/action";
 import { useAuthStore } from "@/stores/authStore";
+import { PermissionKey } from "@/types/permissions";
 
 // Đây là kiểu dữ liệu cho Table (thêm key + description)
 interface DataType extends ProductApiResponse {
@@ -56,15 +56,11 @@ const columns: ColumnsType<DataType> = [
         title: "Tồn kho",
         dataIndex: "stock",
     },
-    // {
-    //     title: "Tổng tồn kho",
-    //     dataIndex: "total_stock",
-    // },
-
     {
         title: "Thời gian khởi tạo",
         dataIndex: "created_at",
         render: (value) => dayjs(value).format("DD/MM/YY HH:mm"),
+        responsive: ['lg']
     },
     {
         title: "Trạng thái",
@@ -85,6 +81,7 @@ const Page = () => {
     const [openFilterDrawer, setOpenFilterDrawer] = useState(false);
     const [openImportModal, setOpenImportModal] = useState(false);
     const [selectedIds, setSelectedIds] = useState<Array<string | number>>([1, 2, 3]);
+    const hasPermission = useAuthStore(state => state.hasPermission);
     const { warehouseId } = useAuthStore((state) => state.user)
     const [filters, setFilters] = useState<any>({ warehouse_id: warehouseId });
 
@@ -138,6 +135,12 @@ const Page = () => {
         setFilters({ search: filters.search, ...values });
     };
 
+    const handleAddBtn = () => {
+        setModal({ open: true, type: ActionType.CREATE, product: null });
+    }
+
+    const handleImportClick = () => setOpenImportModal(true);
+
     useEffect(() => {
         fetchData();
     }, [filters])
@@ -159,15 +162,17 @@ const Page = () => {
             <SearchAndActionsBar
                 onSearch={handleSearch}
                 placeholder="Theo mã hàng, tên hàng"
-                handleAddBtn={() => setModal({ open: true, type: ActionType.CREATE, product: null })}
+                handleAddBtn={hasPermission(PermissionKey.PRODUCT_CREATE) ? handleAddBtn : undefined}
                 handleFilterBtn={() => setOpenFilterDrawer(true)}
-                handleImportClick={() => setOpenImportModal(true)}
+                handleImportClick={hasPermission(PermissionKey.PRODUCT_IMPORT) ? handleImportClick : undefined}
                 extraExportButton={
-                    <GenericExportButton
-                        exportService={exportProducts}
-                        serviceParams={[[], 1]}
-                        fileNamePrefix="Danhsachsanpham"
-                    />
+                    hasPermission(PermissionKey.PRODUCT_EXPORT) && (
+                        <GenericExportButton
+                            exportService={exportProducts}
+                            serviceParams={[[], warehouseId]}
+                            fileNamePrefix="Danhsachsanpham"
+                        />
+                    )
                 }
             />
             <CustomTable<DataType>
@@ -192,7 +197,10 @@ const Page = () => {
                 onChange={handleTableChange}
             />
             <FilterProductDrawer open={openFilterDrawer} onClose={() => { setOpenFilterDrawer(false) }} handleSearch={handleFilterOrder} />
-            <ImportProductModal open={openImportModal} onClose={() => setOpenImportModal(false)} />
+            <ImportProductModal
+                open={openImportModal}
+                onClose={() => setOpenImportModal(false)}
+            />
             <ProductModal />
         </>
     );

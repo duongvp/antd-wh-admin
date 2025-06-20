@@ -10,19 +10,17 @@ import { getInvoiceStatusLabel, InvoiceStatus } from "@/enums/invoice";
 import FilterDrawer from "@/components/shared/FilterModal";
 import { isEmpty } from "lodash";
 import ReturnInvoiceModal from "./components/ReturnInvoiceModal";
-import { exportReturnOrders, getReturnOrdersByPage, importReturnOrdersFromExcel, ReturnOrderApiResponse } from "@/services/returnService";
-import ImportModal from "@/components/shared/ImportModal";
+import { exportReturnOrders, getReturnOrdersByPage, ReturnOrderApiResponse } from "@/services/returnService";
 import GenericExportButton from "@/components/shared/GenericExportButton";
 import { useAuthStore } from "@/stores/authStore";
+import { PermissionKey } from "@/types/permissions";
+import useReturnStore from "@/stores/returnStore";
+import { Status } from "@/enums/status";
 
 interface DataType extends ReturnOrderApiResponse {
     key: number;
     description: React.ReactNode;
 }
-
-const formatCurrency = (value: number | string) => {
-    return Number(value).toLocaleString()
-};
 
 const columns: ColumnsType<DataType> = [
     {
@@ -45,18 +43,6 @@ const columns: ColumnsType<DataType> = [
         ellipsis: true,
     },
     {
-        title: "Cần trả khách",
-        dataIndex: "refund_amount",
-        render: formatCurrency,
-        align: 'right',
-    },
-    {
-        title: "Đã trả khách",
-        dataIndex: "refund_amount", // Giả sử có trường này từ API
-        render: formatCurrency,
-        align: 'right',
-    },
-    {
         title: "Trạng thái",
         dataIndex: "status",
         render: (value) => (
@@ -67,8 +53,8 @@ const columns: ColumnsType<DataType> = [
     },
 ];
 
-interface InvoiceFilter {
-    invoice_code?: string;
+interface IReturnFilter {
+    return_code: string;
     [key: string]: any;
 }
 
@@ -81,8 +67,10 @@ const Page = () => {
     const [total, setTotal] = useState<number>(0);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
     const [modalVisible, setModalVisible] = useState(false);
-    const [filter, setFilter] = useState<InvoiceFilter>({});
+    const hasPermission = useAuthStore(state => state.hasPermission);
     const { warehouseId } = useAuthStore((state) => state.user)
+    const { shouldReload, setShouldReload } = useReturnStore()
+    const [filter, setFilter] = useState<IReturnFilter>({ return_code: "", status: Status.RECEIVED });
 
     const fetchData = useCallback(async () => {
         if (warehouseId === -1) return
@@ -114,10 +102,6 @@ const Page = () => {
     }, [api, pagination, filter]);
 
 
-    useEffect(() => {
-        fetchData();
-    }, [fetchData]);
-
     const handleRowClick = (record: DataType) => {
         const key = record.key;
         setExpandedRowKeys((prevKeys) =>
@@ -135,16 +119,32 @@ const Page = () => {
     };
 
     const handleSearch = async (value: string) => {
-        setFilter({ ...filter, invoice_code: value });
+        setFilter({ ...filter, return_code: value });
     };
 
     const handleFilterOrder = (values: any) => {
+        console.log("🚀 ~ handleFilterOrder ~ values:", values)
         if (isEmpty(values)) {
-            setFilter({ invoice_code: filter.invoice_code });
+            setFilter({ return_code: filter.return_code });
             return
         }
-        setFilter({ ...filter, ...values });
+        setFilter({ return_code: filter.return_code, ...values });
     };
+
+    const handleAddBtn = () => {
+        setModalVisible(true);
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    useEffect(() => {
+        if (shouldReload) {
+            fetchData()
+            setShouldReload(false)
+        }
+    }, [shouldReload])
 
     useEffect(() => {
         if (warehouseId === -1) return
@@ -156,17 +156,18 @@ const Page = () => {
             {contextHolder}
             <SearchAndActionsBar
                 onSearch={handleSearch}
-                placeholder="Tìm theo mã phiếu trả"
+                placeholder="Tìm theo mã phiếu trả, mã hoá đơn"
                 titleBtnAdd="Trả hàng"
-                handleAddBtn={() => setModalVisible(true)}
+                handleAddBtn={hasPermission(PermissionKey.RETURN_PROCESS) ? handleAddBtn : undefined}
                 handleFilterBtn={() => setOpenFilterDrawer(true)}
-                // handleImportClick={() => setOpenImportModal(true)}
                 extraExportButton={
-                    <GenericExportButton
-                        exportService={exportReturnOrders}
-                        serviceParams={[[], 1]}
-                        fileNamePrefix="Danh_sach_phiếu trả hàng"
-                    />
+                    hasPermission(PermissionKey.RETURN_EXPORT) && (
+                        <GenericExportButton
+                            exportService={exportReturnOrders}
+                            serviceParams={[[], warehouseId]}
+                            fileNamePrefix="Danh_sach_phiếu trả hàng"
+                        />
+                    )
                 }
             />
 
@@ -207,17 +208,6 @@ const Page = () => {
                 visible={modalVisible}
                 onClose={() => setModalVisible(false)}
             />
-            {/* <ImportModal
-                open={openImportModal}
-                onClose={() => setOpenImportModal(false)}
-                title="Nhập hàng hóa từ file dữ liệu"
-                notes={[
-                    'Mã phiếu trả hàng luôn bắt đầu bằng cụm từ “TTIP”. Nếu bạn không nhập, hệ thống sẽ tự động thêm vào.',
-                    'Hệ thống cho phép import tối đa 1.000 dòng mỗi lần.',
-                ]}
-                importApiFn={importReturnOrdersFromExcel}
-                linkExcel="/files/danh_sach_hoa_don_mau.xlsx"
-            /> */}
         </>
     );
 };

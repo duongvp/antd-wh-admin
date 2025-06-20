@@ -16,6 +16,7 @@ import GenericExportButton from "@/components/shared/GenericExportButton";
 import { exportInvoices } from "@/services/invoiceService";
 import { useAuthStore } from "@/stores/authStore";
 import useInventoryCheckStore from "@/stores/inventoryCheckStore";
+import { PermissionKey } from "@/types/permissions";
 
 interface DataType extends InventoryCheckApiResponse {
     key: number;
@@ -68,8 +69,8 @@ const Page = () => {
     const [api, contextHolder] = notification.useNotification();
     const [total, setTotal] = useState<number>(0);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
-    const [openImportModal, setOpenImportModal] = useState(false);
 
+    const hasPermission = useAuthStore(state => state.hasPermission);
     const { warehouseId } = useAuthStore((state) => state.user)
     const [filter, setFilter] = useState<Record<string, any>>({ warehouse_id: warehouseId });
     const { shouldReload, setShouldReload } = useInventoryCheckStore();
@@ -128,6 +129,10 @@ const Page = () => {
         setFilter({ ...filter, ...values });
     };
 
+    const handleAddBtn = () => {
+        router.push("/transactions/inventory-checks/create");
+    };
+
     useEffect(() => {
         fetchData();
     }, [fetchData]);
@@ -151,15 +156,16 @@ const Page = () => {
                 onSearch={handleSearch}
                 placeholder="Theo mã kiểm kho"
                 titleBtnAdd="Kiểm kho"
-                handleAddBtn={() => router.push("/transactions/inventory-checks/create")}
+                handleAddBtn={hasPermission(PermissionKey.STOCK_CHECK_CREATE) ? handleAddBtn : undefined}
                 handleFilterBtn={() => setOpenFilterDrawer(true)}
-                // handleImportClick={() => setOpenImportModal(true)}
                 extraExportButton={
-                    <GenericExportButton
-                        exportService={exportInventoryChecks}
-                        serviceParams={[[], 1]}
-                        fileNamePrefix="Danh_sach_kiem_kho"
-                    />
+                    hasPermission(PermissionKey.STOCK_CHECK_EXPORT) && (
+                        <GenericExportButton
+                            exportService={exportInventoryChecks}
+                            serviceParams={[[], warehouseId]}
+                            fileNamePrefix="Danh_sach_kiem_kho"
+                        />
+                    )
                 }
             />
 
@@ -201,18 +207,6 @@ const Page = () => {
                 onClose={() => setOpenFilterDrawer(false)}
                 handleSearch={handleFilter}
             />
-            {/* <ImportModal
-                open={openImportModal}
-                title="Tạo phiếu kiểm kho từ file dữ liệu"
-                onClose={() => setOpenImportModal(false)}
-                notes={[
-                    'Mã hóa đơn luôn bắt đầu bằng cụm từ “KKIP”. Nếu bạn không nhập, hệ thống sẽ tự động thêm vào.',
-                    'Hệ thống cho phép import tối đa 1.000 dòng mỗi lần.',
-                    'Hệ thống sẽ kiểm tra nếu sản phẩm chưa có sẽ được tạo mới sản phẩm',
-                ]}
-                importApiFn={importInventoryChecksFromExcel}
-                linkExcel="/files/danh_sach_kiem_kho_mau.xlsx"
-            /> */}
         </>
     );
 };

@@ -2,16 +2,17 @@
 import React, { useState, useEffect } from "react";
 import CustomTable from "@/components/ui/Table";
 import type { ColumnsType } from "antd/es/table";
-// import SearchAndActionsBar from "./components/SearchAndActionsBar";
-import { CategoryApiResponse, getCategories } from "@/services/categoryService";
+import { CategoryApiResponse, deleteCategory, getCategories, getCategoriesByPage } from "@/services/categoryService";
 import SearchAndActionsBar from "@/components/shared/SearchAndActionBar";
 import CategoryModal from "./components/SearchAndActionsBar/CategoryModal";
 import useCategoryStore from "@/stores/categoryStore";
 import { ActionType } from "@/enums/action";
-import { Button, Space } from "antd";
+import { Space } from "antd";
 import ConfirmButton from "@/components/ui/ConfirmButton";
-import { CloseCircleFilled, DeleteOutlined, EditFilled } from "@ant-design/icons";
+import { DeleteOutlined, EditFilled } from "@ant-design/icons";
 import ActionButton from "@/components/ui/ActionButton";
+import { useAuthStore } from "@/stores/authStore";
+import { PermissionKey } from "@/types/permissions";
 
 // Đây là kiểu dữ liệu cho Table (thêm key + description)
 interface DataType extends CategoryApiResponse {
@@ -29,10 +30,6 @@ const columns: ColumnsType<DataType> = [
         dataIndex: "category_name",
     },
     {
-        title: "Nhóm cha",
-        dataIndex: "parent_name",
-    },
-    {
         title: "Tương tác",
         dataIndex: "action",
         width: 100,
@@ -43,10 +40,16 @@ const Page = () => {
     const [data, setData] = useState<DataType[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const { setModal, shouldReload, setShouldReload } = useCategoryStore();
+    const [filters, setFilters] = useState<any>({ search: "" });
+    const hasPermission = useAuthStore(state => state.hasPermission);
+    const handleDetete = async (id: number) => {
+        await deleteCategory(id);
+    }
 
     const fetchApi = async () => {
         try {
-            const apiData = await getCategories();
+            console.log("filters", filters);
+            const apiData = await getCategoriesByPage(filters);
 
             // map lại dữ liệu cho Table
             const tableData: DataType[] = apiData.map((item) => ({
@@ -54,23 +57,30 @@ const Page = () => {
                 key: Number(item.category_id), // dùng product_id làm key
                 action: (
                     <Space>
-                        <ActionButton
-                            type='primary'
-                            color='orange'
-                            variant='solid'
-                            icon={<EditFilled />}
-                            onClick={() => setModal({ open: true, type: ActionType.UPDATE, category: item })}
-                        />
-                        <ConfirmButton
-                            customColor="red"
-                            icon={<DeleteOutlined />}
-                            onConfirm={() => {
-                                console.log("Hủy bỏ đã được xác nhận");
-                            }}
-                            confirmMessage="Bạn có chắc chắn muốn xoá nhóm hàng này? Tất cả những nhóm hàng con phụ thuộc vào nhóm này sẽ bị xoá"
-                            messageWhenSuccess="Xoá thành công"
-                            messageWhenError="Có lỗi xảy ra khi xoá"
-                        />
+                        {
+                            hasPermission(PermissionKey.CATEGORY_EDIT) && (
+                                <ActionButton
+                                    type='primary'
+                                    color='orange'
+                                    variant='solid'
+                                    icon={<EditFilled />}
+                                    onClick={() => setModal({ open: true, type: ActionType.UPDATE, category: item })}
+                                />
+                            )
+                        }
+                        {
+                            hasPermission(PermissionKey.CATEGORY_DELETE) && (
+                                <ConfirmButton
+                                    customColor="red"
+                                    icon={<DeleteOutlined />}
+                                    onConfirm={() => handleDetete(item.category_id)}
+                                    confirmMessage="Bạn có chắc chắn muốn xoá nhóm hàng này? Hành động này sẽ không thể hoàn tác"
+                                    messageWhenSuccess="Xoá thành công"
+                                    messageWhenError="Có lỗi xảy ra khi xoá"
+                                    setShouldReload={() => setShouldReload(true)}
+                                />
+                            )
+                        }
                     </Space>
                 )
             }));
@@ -85,7 +95,7 @@ const Page = () => {
 
     useEffect(() => {
         fetchApi();
-    }, []);
+    }, [filters]);
 
     useEffect(() => {
         if (shouldReload) {
@@ -94,13 +104,21 @@ const Page = () => {
         }
     }, [shouldReload]);
 
+    const handleSearch = async (values: any) => {
+        setFilters({ search: values });
+    }
+
+    const handleAddBtn = () => {
+        setModal({ open: true, type: ActionType.CREATE, category: null });
+    }
+
     return (
         <>
             <SearchAndActionsBar
-                onSearch={async () => { }}
+                onSearch={handleSearch}
                 placeholder="Theo tên nhóm hàng"
                 titleBtnAdd="Nhóm hàng"
-                handleAddBtn={() => { setModal({ open: true, type: ActionType.CREATE, category: null }) }}
+                handleAddBtn={hasPermission(PermissionKey.CATEGORY_CREATE) ? handleAddBtn : undefined}
             />
             <CustomTable<DataType>
                 columns={columns}

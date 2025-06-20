@@ -48,7 +48,7 @@ export const importInvoicesFromExcel = async (formatData: any): Promise<any> => 
     });
 };
 
-export const exportInvoices = async (invoiceIds: Array<string | number>, warehouseId?: number): Promise<Blob> => {
+export const exportInvoices = async (invoiceIds: Array<string | number | undefined>, warehouseId?: number): Promise<Blob> => {
     const response = await fetch(`${API_BASE_URL}/export`, {
         method: 'POST',
         headers: {
@@ -111,20 +111,9 @@ export const updateInvoice = async (id: number, invoiceData: any): Promise<Invoi
     });
 };
 
-export const updateInvoicePayment = async (id: number, invoiceData: any): Promise<InvoiceApiResponse> => {
-    const url = `${API_BASE_URL}/update-payment/${id}`;
+export const cancelInvoice = async (id: number) => {
+    const url = `${API_BASE_URL}/cancel/${id}`;
     return await fetchInstance(url, {
-        method: 'PUT',
-        body: JSON.stringify(invoiceData),
-        headers: {
-            'Content-Type': 'application/json',
-        },
-    });
-};
-
-export const deleteInvoice = async (id: string): Promise<void> => {
-    const url = `${API_BASE_URL}/${id}`;
-    return await fetchInstance(url, {
-        method: 'DELETE',
+        method: 'POST',
     });
 };

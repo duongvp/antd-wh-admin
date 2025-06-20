@@ -11,24 +11,15 @@ interface DecriptionRowProps {
 }
 
 const DecriptionRow: React.FC<DecriptionRowProps> = ({ record }) => {
-    const onChange = (key: string) => {
-        console.log('Tab switched to:', key);
-    };
-
     const items: TabsProps['items'] = [
         {
             key: '1',
             label: 'Thông tin',
             children: <CustomerDetail record={record} />,
         },
-        {
-            key: '2',
-            label: 'Lịch sử mua hàng',
-            children: <div>Nội dung tab 2</div>,
-        },
     ];
 
-    return <Tabs defaultActiveKey="1" items={items} onChange={onChange} />;
+    return <Tabs defaultActiveKey="1" items={items} />;
 };
 
 export default DecriptionRow;

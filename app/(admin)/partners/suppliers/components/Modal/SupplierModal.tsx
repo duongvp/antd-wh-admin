@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { CloseCircleOutlined, SaveOutlined } from '@ant-design/icons';
 import CustomSpin from '@/components/ui/Spins';
 import { showErrorMessage, showSuccessMessage } from '@/ultils/message';
-import AreaWardSelector from '@/components/templates/AreaWardSelector';
 import useSupplierStore from "@/stores/supplierStore";
+import { ActionType } from '@/enums/action';
+import { createSupplier, updateSupplier } from '@/services/supplierService';
 
 const formItemLayout = {
     labelCol: { span: 6 },
@@ -14,7 +15,7 @@ const formItemLayout = {
 
 const SupplierModal = () => {
     const [form] = Form.useForm();
-    const { modal, resetModal } = useSupplierStore();
+    const { modal, resetModal, setShouldReload } = useSupplierStore();
     const [loadingModalVisible, setLoadingModalVisible] = useState(false);
 
     const onCloseModal = () => {
@@ -22,30 +23,43 @@ const SupplierModal = () => {
         resetModal()
     }
 
-    const handleFormSubmit = async (values: any) => {
-        console.log("🚀 ~ handleFormSubmit ~ values:", values)
+    const handleFormSubmit = async () => {
         try {
-            setLoadingModalVisible(true);
-            // await createCategory(values);
-            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const rawValues = form.getFieldsValue();
+            const values = Object.fromEntries(
+                Object.entries(rawValues).map(([key, value]) => {
+                    if (typeof value === 'string') {
+                        return [key, value.trim()];
+                    }
+                    return [key, value];
+                })
+            );
 
+            setLoadingModalVisible(true);
+
+            if (modal.type === ActionType.CREATE) {
+                await createSupplier(values);
+            } else if (modal.type === ActionType.UPDATE) {
+                await updateSupplier(modal.suppliers?.supplier_id || 0, values);
+            }
+
+            setShouldReload(true);
             form.resetFields();
             onCloseModal();
             showSuccessMessage(`${modal.title} thành công!`);
-        } catch (error) {
+        } catch (error: Error | any) {
             console.error('Lỗi submit:', error);
-            showErrorMessage(`${modal.title} thất bại!`);
+            error.message ? showErrorMessage(error.message) : showErrorMessage(`${modal.title} thất bại!`);
         } finally {
             setLoadingModalVisible(false);
         }
     };
 
+
     useEffect(() => {
         if (modal.open) {
             form.setFieldsValue({
                 ...modal.suppliers,
-                area: 'Thành phố Hà Nội - Quận Hoàn Kiếm',
-                ward: 'Phường Đồng Xuân',
             });
 
         }
@@ -66,7 +80,7 @@ const SupplierModal = () => {
                     <Button
                         key="submit"
                         type="primary"
-                        onClick={() => form.submit()}
+                        onClick={handleFormSubmit}
                         icon={<SaveOutlined />}
                     >
                         Lưu
@@ -83,16 +97,33 @@ const SupplierModal = () => {
                     <Form.Item label="Mã nhà cung cấp" name="supplier_code">
                         <Input placeholder="Mã mặc định" />
                     </Form.Item>
-                    <Form.Item label="Tên nhà cung cấp" name="supplier_name">
+                    <Form.Item label="Tên nhà cung cấp" name="supplier_name" rules={[{ required: true, message: 'Vui lòng nhập tên nhà cung cấp!' }]}>
                         <Input />
                     </Form.Item>
-                    <Form.Item label="Điện thoại" name="phone">
+                    <Form.Item label="Điện thoại" name="phone" rules={[
+                        { required: true, message: 'Vui lòng nhập số điện thoại nhà cung cấp!' },
+                        {
+                            validator: (_, value) => {
+                                if (!value) return Promise.resolve();
+
+                                // Nếu thiếu số 0 đầu, tự thêm vào để kiểm tra định dạng
+                                const normalized = value.startsWith('0') ? value : '0' + value;
+
+                                const vietnamPhoneRegex = /^0(3[2-9]|5[6|8|9]|7[0|6-9]|8[1-5]|9[0-9])[0-9]{7}$/;
+
+                                if (vietnamPhoneRegex.test(normalized)) {
+                                    return Promise.resolve();
+                                } else {
+                                    return Promise.reject('Số điện thoại không hợp lệ!');
+                                }
+                            },
+                        },
+                    ]}>
                         <Input />
                     </Form.Item>
                     <Form.Item label="Địa chỉ" name="address">
                         <Input />
                     </Form.Item>
-                    <AreaWardSelector form={form} />
                 </Form>
             </Modal>
         </>

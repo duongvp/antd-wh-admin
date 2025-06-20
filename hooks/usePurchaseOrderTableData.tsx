@@ -10,7 +10,7 @@ interface UsePurchaseOrderTableDataReturn {
     error: string | null;
 }
 
-export function usePurchaseOrderTableData(purchaseOrderId: number): UsePurchaseOrderTableDataReturn {
+export function usePurchaseOrderTableData(purchaseOrderId?: number, deps: React.DependencyList = []): UsePurchaseOrderTableDataReturn {
     const [poInfos, setPoInfos] = useState<Partial<IPurchaseOrderBase>>({});
     const [tableData, setTableData] = useState<Partial<IPurchaseOrderDetail>[]>([]);
     const [poSummary, setPoSummary] = useState<Partial<IPurchaseOrderSummary>>({});
@@ -21,7 +21,7 @@ export function usePurchaseOrderTableData(purchaseOrderId: number): UsePurchaseO
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const res = await getPurchaseOrderById(purchaseOrderId);
+                const res = await getPurchaseOrderById(purchaseOrderId as number);
                 const { items, summary, ...rest } = res;
                 setTableData(items);
                 setPoInfos(rest);
@@ -37,7 +37,10 @@ export function usePurchaseOrderTableData(purchaseOrderId: number): UsePurchaseO
         if (purchaseOrderId) {
             fetchData();
         }
-    }, [purchaseOrderId]);
+        if (!purchaseOrderId) {
+            setLoading(false);
+        }
+    }, [purchaseOrderId, ...deps]);
 
     return { tableData, poInfos, poSummary, loading, error };
 }

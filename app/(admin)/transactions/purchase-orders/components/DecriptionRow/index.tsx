@@ -1,28 +1,24 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Tabs } from 'antd';
 import TableWithActions from './TableWithActions';
-import { getPurchaseOrderById, IPurchaseOrderBase, IPurchaseOrderDetail, IPurchaseOrderSummary, PurchaseOrderApiResponse } from '@/services/purchaseOrderService';
+import { PurchaseOrderApiResponse } from '@/services/purchaseOrderService';
+import usePurchaseOrderStore from '@/stores/purchaseOrderStore';
+import { usePurchaseOrderTableData } from '@/hooks/usePurchaseOrderTableData';
 
 interface DecriptionTableProps {
     data: PurchaseOrderApiResponse;
 }
 
 const DecriptionTable: React.FC<DecriptionTableProps> = ({ data }) => {
-    const [poInfos, setPoInfos] = useState<Partial<IPurchaseOrderBase>>({});
-    const [tableData, setTableData] = useState<Partial<IPurchaseOrderDetail>[]>([]);
-    const [poSummary, setPoSummary] = useState<Partial<IPurchaseOrderSummary>>({});
+    const shouldReload = usePurchaseOrderStore(state => state.shouldReload);
 
-    useEffect(() => {
-        const fetchApiTableData = async () => {
-            const res = await getPurchaseOrderById(data.po_id);
-            console.log("🚀 ~ fetchApiTableData ~ res:", res)
-            const { items, summary, ...rest } = res
-            setTableData(items);
-            setPoInfos(rest)
-            setPoSummary(summary);
-        };
-        fetchApiTableData()
-    }, [data.po_id]);
+    const {
+        tableData,
+        poInfos,
+        poSummary,
+        loading,
+        error,
+    } = usePurchaseOrderTableData(data.po_id, [shouldReload]);
 
     const tabItems = [
         {
@@ -31,6 +27,8 @@ const DecriptionTable: React.FC<DecriptionTableProps> = ({ data }) => {
             children: <TableWithActions poDetail={tableData} poInfos={poInfos} poSummary={poSummary} />,
         },
     ];
+
+    if (loading) return <></>
 
     return <Tabs defaultActiveKey="1" items={tabItems} />;
 };

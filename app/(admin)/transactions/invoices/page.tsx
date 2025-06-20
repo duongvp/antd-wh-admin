@@ -9,11 +9,14 @@ import { exportInvoices, getInvoicesByPage, importInvoicesFromExcel, InvoiceApiR
 import { notification } from "antd";
 import { getInvoiceStatusLabel, InvoiceStatus } from "@/enums/invoice";
 import FilterDrawer from "@/components/shared/FilterModal";
-import { isEmpty, set } from "lodash";
+import { isEmpty } from "lodash";
 import ImportModal from "@/components/shared/ImportModal";
 import GenericExportButton from "@/components/shared/GenericExportButton";
 import { useAuthStore } from "@/stores/authStore";
 import { getUsersFollowWarehouse } from "@/services/userService";
+import { PermissionKey } from "@/types/permissions";
+import useInvoiceStore from "@/stores/invoiceStore";
+import { Status } from "@/enums/status";
 
 interface DataType extends InvoiceApiResponse {
     key: number;
@@ -24,10 +27,6 @@ interface InvoiceFilter {
     invoice_code?: string;
     [key: string]: any;
 }
-
-const formatCurrency = (value: number | string) => {
-    return Number(value).toLocaleString()
-};
 
 const columns: ColumnsType<DataType> = [
     {
@@ -45,16 +44,9 @@ const columns: ColumnsType<DataType> = [
         ellipsis: true,
     },
     {
-        title: "Khách cần trả",
+        title: "Tổng tiền",
         dataIndex: "total_amount",
-        render: formatCurrency,
-        align: 'right',
-    },
-    {
-        title: "Khách đã trả",
-        dataIndex: "amount_paid", // Giả sử có trường này từ API
-        render: formatCurrency,
-        align: 'right',
+        render: (value) => Number(value).toLocaleString(),
     },
     {
         title: "Trạng thái",
@@ -78,8 +70,41 @@ const Page = () => {
     const [pagination, setPagination] = useState({ current: 1, pageSize: 10 });
     const [openImportModal, setOpenImportModal] = useState(false);
     const { warehouseId } = useAuthStore((state) => state.user)
-    const [filter, setFilter] = useState<InvoiceFilter>({ warehouse_id: warehouseId });
+    const hasPermission = useAuthStore(state => state.hasPermission);
+    const [filter, setFilter] = useState<InvoiceFilter>({ warehouse_id: warehouseId, status: Status.RECEIVED });
+    const { setShouldReload, shouldReload } = useInvoiceStore()
 
+    const handleRowClick = (record: DataType) => {
+        const key = record.key;
+        setExpandedRowKeys((prevKeys) =>
+            prevKeys.includes(key)
+                ? prevKeys.filter((k) => k !== key)
+                : [...prevKeys, key]
+        );
+    };
+
+    const handleTableChange = (paginationInfo: any) => {
+        setPagination({
+            current: paginationInfo.current,
+            pageSize: paginationInfo.pageSize,
+        });
+    };
+
+    const handleSearch = async (value: string) => {
+        setFilter({ ...filter, invoice_code: value });
+    };
+
+    const handleFilterOrder = (values: any) => {
+        if (isEmpty(values)) {
+            setFilter({ invoice_code: filter.invoice_code });
+            return
+        }
+        setFilter({ invoice_code: filter.invoice_code, ...values });
+    };
+
+    const handleCreateInvoice = () => window.open('/transactions/invoices/create', '_blank')
+
+    const handleImportClick = () => setOpenImportModal(true);
 
     const fetchData = useCallback(async () => {
         if (warehouseId === -1) return
@@ -118,38 +143,17 @@ const Page = () => {
         fetchData();
     }, [fetchData]);
 
-    const handleRowClick = (record: DataType) => {
-        const key = record.key;
-        setExpandedRowKeys((prevKeys) =>
-            prevKeys.includes(key)
-                ? prevKeys.filter((k) => k !== key)
-                : [...prevKeys, key]
-        );
-    };
-
-    const handleTableChange = (paginationInfo: any) => {
-        setPagination({
-            current: paginationInfo.current,
-            pageSize: paginationInfo.pageSize,
-        });
-    };
-
-    const handleSearch = async (value: string) => {
-        setFilter({ ...filter, invoice_code: value });
-    };
-
-    const handleFilterOrder = (values: any) => {
-        if (isEmpty(values)) {
-            setFilter({ invoice_code: filter.invoice_code });
-            return
-        }
-        setFilter({ ...filter, ...values });
-    };
-
     useEffect(() => {
         if (warehouseId === -1) return
         setFilter({ ...filter, warehouse_id: warehouseId });
     }, [warehouseId]);
+
+    useEffect(() => {
+        if (shouldReload) {
+            fetchData();
+            setShouldReload(false);
+        }
+    }, [shouldReload])
 
     return (
         <>
@@ -158,15 +162,17 @@ const Page = () => {
                 onSearch={handleSearch}
                 placeholder="Tìm theo mã phiếu hoá đơn"
                 titleBtnAdd="Hoá đơn"
-                handleImportClick={() => setOpenImportModal(true)}
-                handleAddBtn={() => window.open('/transactions/invoices/create', '_blank')}
+                handleImportClick={hasPermission(PermissionKey.INVOICE_CREATE) ? handleImportClick : undefined}
+                handleAddBtn={hasPermission(PermissionKey.INVOICE_IMPORT) ? handleCreateInvoice : undefined}
                 handleFilterBtn={() => setOpenFilterDrawer(true)}
                 extraExportButton={
-                    <GenericExportButton
-                        exportService={exportInvoices}
-                        serviceParams={[[1, 2, 3], 1]}
-                        fileNamePrefix="Danh_sach_hoa_don_"
-                    />
+                    hasPermission(PermissionKey.INVOICE_EXPORT) && (
+                        <GenericExportButton
+                            exportService={exportInvoices}
+                            serviceParams={[[], warehouseId]}
+                            fileNamePrefix="Danh_sach_hoa_don_"
+                        />
+                    )
                 }
             />
 
@@ -208,11 +214,12 @@ const Page = () => {
                 title="Tạo hóa đơn từ file dữ liệu"
                 notes={[
                     'Mã hóa đơn luôn bắt đầu bằng cụm từ “HDIP”. Nếu bạn không nhập, hệ thống sẽ tự động thêm vào.',
-                    'Hệ thống cho phép import tối đa 1.000 dòng mỗi lần.',
+                    'Hệ thống cho phép import tối đa 500 dòng mỗi lần.',
                     'Đảm bảo tồn kho của những hàng hóa liên quan vẫn đáp ứng đủ.',
                 ]}
                 importApiFn={importInvoicesFromExcel}
                 linkExcel="/files/danh_sach_hoa_don_mau.xlsx"
+                setShouldReload={setShouldReload}
             />
         </>
     );
